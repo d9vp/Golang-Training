@@ -4,15 +4,15 @@ import "fmt"
 
 func main() {
 	num := 10
-	check_prime(num)
-	sum := sum_fibo(num)
+	checkPrime(num)
+	sum := sumFibonacci(num)
 	fmt.Printf("\nSum of %d elements in Fibonacci series is %d", num, sum)
 
-	slc := []int{2, 0, 5, 7, 9, 0, 14, 27, 1}
-	count_oez(slc)
+	mySlice := []int{2, 0, 5, 7, 9, 0, 14, 27, 1}
+	countEvenOddZero(mySlice)
 }
 
-func check_prime(num int) {
+func checkPrime(num int) {
 	for i := 2; i < num; i++ {
 		if num%i == 0 {
 			fmt.Printf("%d is not prime.\n", num)
@@ -22,7 +22,7 @@ func check_prime(num int) {
 	fmt.Printf("%d is prime.\n", num)
 }
 
-func sum_fibo(num int) int {
+func sumFibonacci(num int) int {
 	fibo := []int{0, 1}
 	sum := 1
 	for i := 0; i < num-2; i++ {
@@ -33,10 +33,10 @@ func sum_fibo(num int) int {
 	return sum
 }
 
-func count_oez(slc []int) {
+func countEvenOddZero(mySlice []int) {
 	zeroes, evens, odds := 0, 0, 0
 
-	for _, val := range slc {
+	for _, val := range mySlice {
 		if val == 0 {
 			zeroes += 1
 		} else if val%2 == 1 {
