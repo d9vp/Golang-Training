@@ -14,6 +14,14 @@ type Contact struct {
 	ContactInfo []*contactInfo.ContactInformation
 }
 
+func (contact *Contact) GetContactID() int {
+	return contact.ContactID
+}
+
+func (contact *Contact) GetActivityStatus() bool {
+	return contact.IsActive
+}
+
 // CREATION
 func CreateContact(firstName, lastName string, contactID int) *Contact {
 	err := validateUserInfo(firstName, lastName)
@@ -31,56 +39,29 @@ func CreateContact(firstName, lastName string, contactID int) *Contact {
 	return tempContact
 }
 
-func CreateContactInfo(contactInfoType, contactInfoValue string, contactID int, contacts []*Contact) {
+func (contact *Contact) CreateContactInfo(contactInfoType, contactInfoValue string) {
 	contactInfoID := 0
 
-	for _, contact := range contacts {
-		if contact.ContactID == contactID {
-			if len(contact.ContactInfo) != 0 {
-				contactInfoID = contact.ContactInfo[len(contact.ContactInfo)-1].ContactInfoID
-				contactInfoID++
-			}
-			tempContactInfo := contactInfo.CreateContactInfoForContactID(contactInfoType, contactInfoValue, contactInfoID)
-			contact.ContactInfo = append(contact.ContactInfo, tempContactInfo)
-
-			return
-		}
+	if len(contact.ContactInfo) != 0 {
+		contactInfoID = contact.ContactInfo[len(contact.ContactInfo)-1].ContactInfoID
+		contactInfoID++
 	}
-	panic("No such contact ID found.")
+	tempContactInfo := contactInfo.CreateContactInfoForContactID(contactInfoType, contactInfoValue, contactInfoID)
+	contact.ContactInfo = append(contact.ContactInfo, tempContactInfo)
+
 }
 
 //READING
 
-func GetContact(contactID int, contacts []*Contact) error {
-	flag := 0
-	for _, contact := range contacts {
-		if contact.ContactID == contactID && contact.IsActive {
-			flag = 1
-			fmt.Println(*contact)
-			for _, contInfo := range contact.ContactInfo {
-				err := contactInfo.GetContactInfo(contInfo.ContactInfoID, contact.ContactInfo)
-				if err != nil {
-					return err
-				}
-			}
-		}
+func (contact *Contact) GetContactInfo(contactInfoID int) error {
+	if !contact.IsActive {
+		return errors.New("no such contact found")
 	}
-	if flag == 0 {
-		return errors.New("no such contact id found")
-	} else {
-		return nil
-	}
-}
-
-func GetContactInfo(contactID, contactInfoID int, contacts []*Contact) error {
 	flag := 0
-	for _, contact := range contacts {
-		if contact.ContactID == contactID && contact.IsActive {
+	for _, contactInfo := range contact.ContactInfo {
+		if contactInfo.GetContactInfoID() == contactInfoID && contactInfo.GetContactInfoStatus() {
 			flag = 1
-			err := contactInfo.GetContactInfo(contactInfoID, contact.ContactInfo)
-			if err != nil {
-				return err
-			}
+			fmt.Println(*contactInfo)
 		}
 	}
 	if flag == 0 {
@@ -92,34 +73,29 @@ func GetContactInfo(contactID, contactInfoID int, contacts []*Contact) error {
 
 //UPDATION
 
-func UpdateContact(contactID int, parameter string, newValue interface{}, contacts []*Contact) error {
-	for _, contact := range contacts {
-		if contact.ContactID == contactID && contact.IsActive {
-			switch parameter {
-			case "First Name":
-				_, err := contact.updateFirstName(newValue)
-				if err != nil {
-					panic(err)
-				} else {
-					fmt.Println("Update successful!")
-					return nil
-				}
-
-			case "Last Name":
-				_, err := contact.updateLastName(newValue)
-				if err != nil {
-					panic(err)
-				} else {
-					fmt.Println("Update successful!")
-					return nil
-				}
-
-			default:
-				return errors.New("no such parameter found")
-			}
+func (contact *Contact) UpdateContact(parameter string, newValue interface{}) error {
+	switch parameter {
+	case "First Name":
+		_, err := contact.updateFirstName(newValue)
+		if err != nil {
+			return err
+		} else {
+			fmt.Println("Update successful!")
+			return nil
 		}
+
+	case "Last Name":
+		_, err := contact.updateLastName(newValue)
+		if err != nil {
+			return err
+		} else {
+			fmt.Println("Update successful!")
+			return nil
+		}
+
+	default:
+		return errors.New("no such parameter found")
 	}
-	return errors.New("no such contact id found")
 }
 
 func (contact *Contact) updateFirstName(newValue interface{}) (*Contact, error) {
@@ -146,19 +122,20 @@ func (contact *Contact) updateLastName(newValue interface{}) (*Contact, error) {
 	}
 }
 
-func UpdateContactInfo(contactID, contactInfoID int, parameter string, newValue interface{}, contacts []*Contact) error {
+func (contact *Contact) UpdateContactInfo(contactInfoID int, parameter string, newValue interface{}) error {
 	flag := 0
-	for _, contact := range contacts {
-		if contact.ContactID == contactID && contact.IsActive {
+
+	for _, contactInfo := range contact.ContactInfo {
+		if contactInfo.GetContactInfoID() == contactInfoID && contactInfo.GetContactInfoStatus() {
 			flag = 1
-			err := contactInfo.UpdateContactInfo(contactInfoID, parameter, newValue, contact.ContactInfo)
+			err := contactInfo.UpdateContactInfo(parameter, newValue)
 			if err != nil {
 				return err
 			}
 		}
 	}
 	if flag == 0 {
-		return errors.New("no such contact id found")
+		return errors.New("no such contact information id found")
 	} else {
 		return nil
 	}
@@ -166,33 +143,17 @@ func UpdateContactInfo(contactID, contactInfoID int, parameter string, newValue 
 
 //DELETION
 
-func DeleteContact(contactID int, contacts []*Contact) error {
-	flag := 0
-	for _, contact := range contacts {
-		if contact.ContactID == contactID && contact.IsActive {
-			contact.IsActive = false
-			flag = 1
+func (contact *Contact) DeleteContactInfo(contactInfoID int) error {
+	if !contact.IsActive {
+		return errors.New("no such contact found")
+	}
+	for _, contactInfo := range contact.ContactInfo {
+		if contactInfo.GetContactInfoID() == contactInfoID && contactInfo.GetContactInfoStatus() {
+			contactInfo.IsActive = false
+			return nil
 		}
 	}
-	if flag == 1 {
-		return nil
-	} else {
-		return errors.New("no such contact id found")
-	}
-}
-
-func DeleteContactInfo(contactID, contactInfoID int, contacts []*Contact) error {
-	for _, contact := range contacts {
-		if contact.ContactID == contactID && contact.IsActive {
-			err := contactInfo.DeleteContactInfo(contactInfoID, contact.ContactInfo)
-			if err == nil {
-				return nil
-			} else {
-				return err
-			}
-		}
-	}
-	return errors.New("no such contact id found")
+	return errors.New("no such contact information id found")
 }
 
 func validateUserInfo(firstName, lastName string) error {

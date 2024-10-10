@@ -61,35 +61,33 @@ func (user *User) CreateStaffUser(firstName, lastName string) *User {
 	return staff1
 }
 
-func (user *User) CreateContact(firstName, lastName string, userID int) (*User, error) {
+func (user *User) CreateContact(firstName, lastName string) (*User, error) {
 	if user.IsAdmin {
 		panic("Only staff can create contacts")
 	}
 	contactID := 0
-	for _, user := range AllUsers {
-		if user.UserID == userID {
-			if len(user.Contacts) != 0 {
-				contactID = user.Contacts[len(user.Contacts)-1].ContactID
-				contactID++
-			}
-			tempContact := contact.CreateContact(firstName, lastName, contactID)
-			user.Contacts = append(user.Contacts, tempContact)
-			return user, nil
-		}
+	if len(user.Contacts) != 0 {
+		contactID = user.Contacts[len(user.Contacts)-1].GetContactID()
+		contactID++
 	}
-	return user, errors.New("no user with given id found")
+	tempContact := contact.CreateContact(firstName, lastName, contactID)
+	user.Contacts = append(user.Contacts, tempContact)
+	return user, nil
 }
 
-func (user *User) CreateContactInfo(contactInfoType, contactInfoValue string, userID, contactID int) (*User, error) {
+func (user *User) CreateContactInfo(contactInfoType, contactInfoValue string, contactID int) (*User, error) {
 	if user.IsAdmin {
 		panic("Only staff can add contact information")
 	}
-	for _, user := range AllUsers {
-		if user.UserID == userID {
-			contact.CreateContactInfo(contactInfoType, contactInfoValue, contactID, user.Contacts)
+
+	for _, cont := range user.Contacts {
+		if cont.GetContactID() == contactID {
+			cont.CreateContactInfo(contactInfoType, contactInfoValue)
+			return user, nil
 		}
 	}
-	return user, errors.New("no user with given id found")
+
+	panic("no such user id found")
 
 }
 
@@ -99,52 +97,67 @@ func (user *User) GetUser(userID int) (*User, error) {
 	if !user.IsAdmin {
 		return user, errors.New("only admins can view users")
 	}
-	for _, userN := range AllUsers {
-		if userN.UserID == userID && userN.IsActive {
-			// fmt.Println(*userN)
-			fmt.Println("User ID: ", userN.UserID)
-			fmt.Println("First Name: ", userN.FirstName)
-			fmt.Println("Last Name: ", userN.LastName)
-			fmt.Println("Is Admin?: ", userN.IsAdmin)
-			fmt.Println("Is Active?: ", userN.IsActive)
+	for _, u := range AllUsers {
+		// fmt.Println(u.UserID, userID)
+		if u.UserID == userID && u.IsActive {
+			fmt.Println("User ID: ", u.UserID)
+			fmt.Println("First Name: ", u.FirstName)
+			fmt.Println("Last Name: ", u.LastName)
+			fmt.Println("Is Admin?: ", u.IsAdmin)
+			fmt.Println("Is Active?: ", u.IsActive)
 			return user, nil
 		}
 	}
 	return user, errors.New("no such user id found")
 }
 
-func (user *User) GetContact(userID, contactID int) (*User, error) {
-	flag := 0
+func (user *User) GetContact(contactID int) (*User, error) {
 	if user.IsAdmin {
 		return user, errors.New("only staff can view contacts")
 	}
-	for _, userN := range AllUsers {
-		if userN.UserID == userID && userN.IsActive {
+	flag := 0
+	if user.IsActive {
+		for _, cont := range user.Contacts {
+			if cont.GetContactID() == contactID && cont.GetActivityStatus() {
+				flag = 1
+				fmt.Println(*cont)
+				for _, contInfo := range cont.ContactInfo {
+					err := cont.GetContactInfo(contInfo.ContactInfoID)
+					if err != nil {
+						return user, err
+					}
+				}
+			}
+		}
+		if flag == 0 {
+			return user, errors.New("no such contact id found")
+		} else {
+			return user, nil
+		}
+	} else {
+		return user, errors.New("no such user found")
+	}
+}
+
+func (user *User) GetContactInfo(contactID, contactInfoID int) (*User, error) {
+	if user.IsAdmin {
+		return user, errors.New("only staff can view contact information")
+	}
+	flag := 0
+	for _, cont := range user.Contacts {
+		if cont.GetContactID() == contactID && cont.GetActivityStatus() {
 			flag = 1
-			err := contact.GetContact(contactID, userN.Contacts)
+			err := cont.GetContactInfo(contactInfoID)
 			if err != nil {
 				return user, err
 			}
 		}
 	}
 	if flag == 0 {
-		return user, errors.New("no such user id found")
+		return user, errors.New("no such contact id found")
 	} else {
 		return user, nil
 	}
-}
-
-func (user *User) GetContactInfo(userID, contactID, contactInfoID int) (*User, error) {
-	if user.IsAdmin {
-		return user, errors.New("only staff can view contact information")
-	}
-	for _, user := range AllUsers {
-		if user.UserID == userID && user.IsActive {
-			err := contact.GetContactInfo(contactID, contactInfoID, user.Contacts)
-			return user, err
-		}
-	}
-	return user, errors.New("no such user id found")
 }
 
 // func (user *User) GetEverythingAllAtOnce(userID int) (*User, error) {
@@ -173,36 +186,35 @@ func (user *User) GetContactInfo(userID, contactID, contactInfoID int) (*User, e
 
 //////////////UPDATION////////////
 
-func (user *User) UpdateUser(userID int, parameter string, newValue interface{}) (*User, error) {
+func (user *User) UpdateUser(parameter string, newValue interface{}) (*User, error) {
 	if !user.IsAdmin {
 		return user, errors.New("only admins can update user information")
 	}
-	for _, userN := range AllUsers {
-		if userN.UserID == userID && userN.IsActive {
-			switch parameter {
-			case "First Name":
-				_, err := userN.updateFirstName(newValue)
-				if err != nil {
-					panic(err)
-				} else {
-					fmt.Println("Update successful!")
-				}
-
-			case "Last Name":
-				_, err := userN.updateLastName(newValue)
-				if err != nil {
-					panic(err)
-				} else {
-					fmt.Println("Update successful!")
-				}
-
-			default:
-				return user, errors.New("no such parameter found")
-
-			}
-		}
+	if !user.IsActive {
+		return user, errors.New("no such user found")
 	}
-	return user, errors.New("no such user id found")
+	switch parameter {
+	case "First Name":
+		_, err := user.updateFirstName(newValue)
+		if err != nil {
+			return user, err
+		} else {
+			fmt.Println("Update successful!")
+		}
+
+	case "Last Name":
+		_, err := user.updateLastName(newValue)
+		if err != nil {
+			return user, err
+		} else {
+			fmt.Println("Update successful!")
+		}
+
+	default:
+		return user, errors.New("no such parameter found")
+
+	}
+	return user, nil
 }
 
 func (user *User) updateFirstName(newValue interface{}) (*User, error) {
@@ -231,13 +243,16 @@ func (user *User) updateLastName(newValue interface{}) (*User, error) {
 
 }
 
-func (user *User) UpdateContact(userID, contactID int, parameter string, newValue interface{}) (*User, error) {
+func (user *User) UpdateContact(contactID int, parameter string, newValue interface{}) (*User, error) {
 	if user.IsAdmin {
 		return user, errors.New("only staff can update contacts")
 	}
-	for _, userN := range AllUsers {
-		if userN.UserID == userID {
-			err := contact.UpdateContact(contactID, parameter, newValue, userN.Contacts)
+	if !user.IsActive {
+		return user, errors.New("no such user found")
+	}
+	for _, cont := range user.Contacts {
+		if cont.GetContactID() == contactID && cont.GetActivityStatus() {
+			err := cont.UpdateContact(parameter, newValue)
 			if err == nil {
 				return user, nil
 			} else {
@@ -248,13 +263,16 @@ func (user *User) UpdateContact(userID, contactID int, parameter string, newValu
 	return user, errors.New("no such user id found")
 }
 
-func (user *User) UpdateContactInfo(userID, contactID, contactInfoID int, parameter string, newValue interface{}) (*User, error) {
+func (user *User) UpdateContactInfo(contactID, contactInfoID int, parameter string, newValue interface{}) (*User, error) {
 	if user.IsAdmin {
 		return user, errors.New("only staff can update contacts")
 	}
-	for _, userN := range AllUsers {
-		if userN.UserID == userID {
-			err := contact.UpdateContactInfo(contactID, contactInfoID, parameter, newValue, userN.Contacts)
+	if !user.IsActive {
+		return user, errors.New("no such user found")
+	}
+	for _, cont := range user.Contacts {
+		if cont.GetContactID() == contactID {
+			err := cont.UpdateContactInfo(contactInfoID, parameter, newValue)
 			if err == nil {
 				return user, nil
 			} else {
@@ -262,22 +280,23 @@ func (user *User) UpdateContactInfo(userID, contactID, contactInfoID int, parame
 			}
 		}
 	}
-	return user, errors.New("no such user id found")
+	return user, errors.New("no such contact id found")
 }
 
 ///////////DELETION/////////////
 
-func (user *User) DeleteUser(userID int) (*User, error) {
+func (user *User) DeleteUser() (*User, error) {
 	flag := 0
 	if !user.IsAdmin {
 		return user, errors.New("only admins can delete users")
 	}
-	for _, userN := range AllUsers {
-		if userN.UserID == userID && userN.IsActive {
-			userN.IsActive = false
-			flag = 1
-		}
+
+	if user.IsActive {
+		user.IsActive = false
+		flag = 1
+		fmt.Println("Delete successful!")
 	}
+
 	if flag == 1 {
 		return user, nil
 	} else {
@@ -285,30 +304,32 @@ func (user *User) DeleteUser(userID int) (*User, error) {
 	}
 }
 
-func (user *User) DeleteContact(userID, contactID int) (*User, error) {
+func (user *User) DeleteContact(contactID int) (*User, error) {
 	if user.IsAdmin {
 		return user, errors.New("only staff can delete contacts")
 	}
-	for _, userN := range AllUsers {
-		if userN.UserID == userID && userN.IsActive {
-			err := contact.DeleteContact(contactID, userN.Contacts)
-			if err == nil {
-				return user, nil
-			} else {
-				return user, err
-			}
+	if !user.IsActive {
+		return user, errors.New("no such user found")
+	}
+	for _, contact := range user.Contacts {
+		if contact.GetContactID() == contactID && contact.GetActivityStatus() {
+			contact.IsActive = false
+			return user, nil
 		}
 	}
 	return user, errors.New("no such user id found")
 }
 
-func (user *User) DeleteContactInfo(userID, contactID, contactInfoID int) (*User, error) {
+func (user *User) DeleteContactInfo(contactID, contactInfoID int) (*User, error) {
 	if user.IsAdmin {
 		return user, errors.New("only staff can delete contacts")
 	}
-	for _, userN := range AllUsers {
-		if userN.UserID == userID && userN.IsActive {
-			err := contact.DeleteContactInfo(contactID, contactInfoID, userN.Contacts)
+	if !user.IsActive {
+		return user, errors.New("no such user found")
+	}
+	for _, contact := range user.Contacts {
+		if contact.GetContactID() == contactID && contact.GetActivityStatus() {
+			err := contact.DeleteContactInfo(contactInfoID)
 			if err == nil {
 				return user, nil
 			} else {
@@ -316,7 +337,7 @@ func (user *User) DeleteContactInfo(userID, contactID, contactInfoID int) (*User
 			}
 		}
 	}
-	return user, errors.New("no such user id found")
+	return user, errors.New("no such contact if found")
 }
 
 func validateUserInfo(firstName, lastName string) error {

@@ -12,6 +12,14 @@ type ContactInformation struct {
 	IsActive         bool
 }
 
+func (contactinfo *ContactInformation) GetContactInfoID() int {
+	return contactinfo.ContactInfoID
+}
+
+func (contactinfo *ContactInformation) GetContactInfoStatus() bool {
+	return contactinfo.IsActive
+}
+
 //CREATING
 
 func CreateContactInfoForContactID(contactInfoType, contactInfoValue string, contactInfoID int) *ContactInformation {
@@ -46,34 +54,30 @@ func GetContactInfo(contactInfoID int, contactInfos []*ContactInformation) error
 
 //UPDATING
 
-func UpdateContactInfo(contactInfoID int, parameter string, newValue interface{}, contactInfos []*ContactInformation) error {
-	for _, contactInfo := range contactInfos {
-		if contactInfo.ContactInfoID == contactInfoID && contactInfo.IsActive {
-			switch parameter {
-			case "Contact Information Type":
-				_, err := contactInfo.updateContactInfoType(newValue)
-				if err != nil {
-					panic(err)
-				} else {
-					fmt.Println("Update successful!")
-					return nil
-				}
+func (contactInfo *ContactInformation) UpdateContactInfo(parameter string, newValue interface{}) error {
 
-			case "Contact Information Value":
-				_, err := contactInfo.updateContactInfoValue(newValue)
-				if err != nil {
-					panic(err)
-				} else {
-					fmt.Println("Update successful!")
-					return nil
-				}
-
-			default:
-				return errors.New("no such parameter found")
-			}
+	switch parameter {
+	case "Contact Information Type":
+		_, err := contactInfo.updateContactInfoType(newValue)
+		if err != nil {
+			return (err)
+		} else {
+			fmt.Println("Update successful!")
+			return nil
 		}
+
+	case "Contact Information Value":
+		_, err := contactInfo.updateContactInfoValue(newValue)
+		if err != nil {
+			return (err)
+		} else {
+			fmt.Println("Update successful!")
+			return nil
+		}
+
+	default:
+		return errors.New("no such parameter found")
 	}
-	return errors.New("no such contact id found")
 }
 
 func (contactInfo *ContactInformation) updateContactInfoType(newValue interface{}) (*ContactInformation, error) {
@@ -81,7 +85,7 @@ func (contactInfo *ContactInformation) updateContactInfoType(newValue interface{
 		if newValue == "" {
 			return contactInfo, errors.New("contact information type cannot be empty")
 		}
-		if contactInfo.ContactInfoType == "phone" && len(value) != 10 {
+		if value == "phone" && len(contactInfo.ContactInfoValue) != 10 {
 			return contactInfo, errors.New("phone number must be 10 digits")
 		}
 		contactInfo.ContactInfoType = value
@@ -96,27 +100,13 @@ func (contactInfo *ContactInformation) updateContactInfoValue(newValue interface
 		if newValue == "" {
 			return contactInfo, errors.New("contact information value cannot be empty")
 		}
+		if contactInfo.ContactInfoType == "phone" && len(value) != 10 {
+			return contactInfo, errors.New("phone number must be 10 digits")
+		}
 		contactInfo.ContactInfoValue = value
 		return contactInfo, nil
 	} else {
 		return contactInfo, errors.New("invalid contact information value expected a string")
-	}
-}
-
-//DELETING
-
-func DeleteContactInfo(contactInfoID int, contactInfos []*ContactInformation) error {
-	flag := 0
-	for _, contactInfo := range contactInfos {
-		if contactInfo.ContactInfoID == contactInfoID && contactInfo.IsActive {
-			contactInfo.IsActive = false
-			flag = 1
-		}
-	}
-	if flag == 1 {
-		return nil
-	} else {
-		return errors.New("no such contact information id found")
 	}
 }
 
