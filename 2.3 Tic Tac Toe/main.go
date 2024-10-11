@@ -18,6 +18,9 @@ type TicTacToe struct {
 
 // factory
 func NewTicTacToe(player1Name, player2Name string) *TicTacToe {
+	if player1Name == "" || player2Name == "" {
+		panic("Player Names cannot be empty.")
+	}
 	ttt := &TicTacToe{
 		player1: player1Name,
 		player2: player2Name,
