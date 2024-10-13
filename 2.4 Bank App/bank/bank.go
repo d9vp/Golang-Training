@@ -12,6 +12,7 @@ type Bank struct {
 	Abbreviation string
 	IsActive     bool
 	Accounts     []*account.Account
+	Ledger       map[string]float64
 }
 
 var AllBanks = []*Bank{}
@@ -79,6 +80,7 @@ func NewBank(fullName, abbreviation string) *Bank {
 		Abbreviation: abbreviation,
 		IsActive:     true,
 		Accounts:     []*account.Account{},
+		Ledger:       nil,
 	}
 	AllBanks = append(AllBanks, tempBank)
 	return tempBank
@@ -131,4 +133,23 @@ func (b *Bank) RemoveBank() {
 		a.RemoveAccount()
 	}
 	b.IsActive = false
+}
+
+func (b *Bank) AddToLedger(correspondingBankID int, amount float64) {
+	if b.Ledger == nil {
+		b.Ledger = make(map[string]float64)
+	}
+	bankName := GetBankNameFromID(correspondingBankID)
+	b.Ledger[bankName] += amount
+	// fmt.Printf("Updated Ledger for %s: %+v\n", b.FullName, b.Ledger)
+}
+
+func (b *Bank) GetLedgerRecord() {
+	fmt.Printf("Ledger Record for %s:\n", b.FullName)
+	fmt.Printf("%-20s | %-10s\n", "Corresponding Bank", "Amount")
+
+	for bankName, amount := range b.Ledger {
+		fmt.Printf("%-20s | %+.2f\n", bankName, amount)
+	}
+
 }

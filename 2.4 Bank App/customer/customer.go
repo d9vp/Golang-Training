@@ -418,3 +418,73 @@ func (c *Customer) TransferBetweenCustomers(fromAccountNo, fromBankID, toCustID,
 	}
 	return c
 }
+
+func (c *Customer) GetPassbook(accountID int, bankID int) *Customer {
+	err := c.onlyForCustomers()
+	if err != nil {
+		fmt.Println(err)
+		return c
+	}
+
+	var account *account.Account
+
+	for _, acc := range c.Accounts {
+		if acc.AccountNo == accountID && acc.BankID == bankID && acc.GetActivityStatus() {
+			account = acc
+		}
+	}
+	if account == nil {
+		fmt.Println("no such account found")
+		return c
+	}
+
+	account.GetPassbook()
+	return c
+}
+
+func (c *Customer) AddLedgerRecord(senderBankID, receiverBankID int, amount float64) *Customer {
+	err := c.onlyForAdmins()
+	if err != nil {
+		fmt.Println(err)
+		return c
+	}
+	var senderBank *bank.Bank
+	var receiverBank *bank.Bank
+
+	for _, ban := range bank.GetAllBanks() {
+		if ban.BankID == senderBankID && ban.IsActive {
+			senderBank = ban
+		}
+		if ban.BankID == receiverBankID && ban.IsActive {
+			receiverBank = ban
+		}
+	}
+	if senderBank == nil {
+		fmt.Println("no such sender bank id found")
+		return c
+	}
+	if receiverBank == nil {
+		fmt.Println("no such receiver bank id found")
+		return c
+	}
+	senderBank.AddToLedger(receiverBank.GetBankID(), amount)
+	receiverBank.AddToLedger(senderBank.GetBankID(), -amount)
+	return c
+}
+
+func (c *Customer) GetLedgerRecord(bankID int) *Customer {
+	err := c.onlyForAdmins()
+	if err != nil {
+		fmt.Println(err)
+		return c
+	}
+
+	for _, ban := range bank.GetAllBanks() {
+		if ban.BankID == bankID && ban.IsActive {
+			ban.GetLedgerRecord()
+			return c
+		}
+	}
+	fmt.Println("no such bank found")
+	return c
+}
