@@ -1,3 +1,4 @@
+// deprecating, using bankwithledger.go instead
 package bank
 
 import (

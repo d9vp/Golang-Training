@@ -4,6 +4,13 @@ import (
 	"bankingApp/account"
 )
 
+type BankFunctions interface {
+	NewBank(fullName, abbreviation string) (*Bank, error)
+	AddAccount(initialPayment float64) (*account.Account, error)
+	UpdateBankInformation(parameter, value string) error
+	RemoveBank()
+}
+
 type Bank struct {
 	bank
 	Ledger []*Ledger
@@ -26,17 +33,6 @@ func NewBank(fullName, abbreviation string) (*Bank, error) {
 
 	AllBanks = append(AllBanks, ban)
 	return ban, nil
-}
-
-// validateBankName checks that bank names are not empty.
-func ValidateBankName(fullName, abbreviation string) error {
-	if fullName == "" {
-		return errEmptyFullName
-	}
-	if abbreviation == "" {
-		return errEmptyAbbreviation
-	}
-	return nil
 }
 
 // GetActivityStatus returns the bank's active status.

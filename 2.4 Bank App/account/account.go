@@ -8,6 +8,15 @@ import (
 	"strings"
 )
 
+type AccountFunctions interface {
+	NewAccount(accountNo, bankID int, firstPayment float64) *Account
+	RemoveAccount()
+	GetPassbook()
+	Deposit(amount float64, ids ...string) error
+	Withdraw(amount float64, ids ...string) error
+	Transfer(toAccount *Account, amount float64) error
+}
+
 // Account represents a bank account.
 type Account struct {
 	AccountNo int
