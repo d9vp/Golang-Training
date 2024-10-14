@@ -1,14 +1,15 @@
 package main
 
 import (
-	"bankingApp/customer"
+	"bankingApp/user"
+	"fmt"
 )
 
 func main() {
-	admin1 := customer.NewAdmin("Admin", "Admin")
-	customer1, _ := admin1.NewCustomer("Dev", "Patel")
-	customer2, _ := admin1.NewCustomer("Krish", "Pandya")
-	customer3, _ := admin1.NewCustomer("Vidhi", "Shah")
+	admin1 := user.NewAdmin("Admin", "Admin")
+	customer1, _ := admin1.NewUser("Dev", "Patel")
+	customer2, _ := admin1.NewUser("Krish", "Pandya")
+	customer3, _ := admin1.NewUser("Vidhi", "Shah")
 	_ = admin1.NewBank("Global Bank", "GB")
 	_ = admin1.NewBank("National Bank", "NB")
 	_ = admin1.NewBank("Indian Bank", "IB")
@@ -16,25 +17,25 @@ func main() {
 	_ = customer1.NewAccount(1, 1500)
 	_ = customer2.NewAccount(0, 5000)
 	_ = customer3.NewAccount(1, 100000)
-	// admin1.GetCustomers()
+	admin1.GetUsers()
 	// admin1.DeleteBank(0)
-	// customer1.GetAccounts()
-	// admin1.GetBanks()
+	customer1.GetAccounts()
+	admin1.GetBanks()
 
-	// admin1.UpdateBank(0, "Full Bank Name", "HDFC")
-	// admin1.GetBanks()
+	admin1.UpdateBank(0, "Full Bank Name", "HDFC")
+	admin1.GetBanks()
 	// customer1.DeleteAccount(0, 0)
-	// customer1.GetAccounts()
-	// customer1.TransferBetweenOwnAccounts(0, 1, 0, 0, 2000)
-	// customer1.GetAccounts()
-	// fmt.Println(customer1.GetTotalBalance())
-	// customer1.DepositToAccount(0, 0, 1000)
-	// customer1.WithdrawFromAccount(0, 0, 500.50)
-	// customer1.TransferBetweenCustomers(0, 0, 2, 1, 0, 5500)
-	// customer1.GetAccounts()
-	// customer2.GetAccounts()
-	// // customer1.DeleteAccount(0, 0)
-	// customer1.GetPassbook(0, 0)
+	customer1.GetAccounts()
+	customer1.TransferFunds(0, 1, 0, 0, 2000)
+	customer1.GetAccounts()
+	fmt.Println(customer1.GetTotalBalance())
+	customer1.DepositToAccount(0, 0, 1000)
+	customer1.WithdrawFromAccount(0, 0, 500.50)
+	customer1.TransferBetweenUsers(0, 0, 2, 1, 0, 5500)
+	customer1.GetAccounts()
+	customer2.GetAccounts()
+	// customer1.DeleteAccount(0, 0)
+	customer1.GetPassbook(0, 0)
 
 	admin1.AddLedgerRecord(1, 0, 2000)
 	// admin1.GetLedgerRecord(1)

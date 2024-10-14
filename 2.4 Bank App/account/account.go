@@ -2,11 +2,13 @@ package account
 
 import (
 	"bankingApp/transactions"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
 )
 
+// Account represents a bank account.
 type Account struct {
 	AccountNo int
 	BankID    int
@@ -15,99 +17,87 @@ type Account struct {
 	Passbook  []*transactions.Transaction
 }
 
-func (a *Account) GetAccountNumber() int {
-	return a.AccountNo
-}
-func (a *Account) GetBankID() int {
-	return a.BankID
-}
-func (a *Account) GetActivityStatus() bool {
-	return a.IsActive
-}
-func (a *Account) GetBalance() float64 {
-	return a.Balance
-}
+// Error messages
+var (
+	errInsufficientBalance  = errors.New("insufficient balance")
+	errInvalidDepositAmount = errors.New("deposit amount should be greater than 0")
+	errInactiveAccount      = errors.New("account is inactive")
+)
 
+// NewAccount creates a new account with the given details.
 func NewAccount(accountNo, bankID int, firstPayment float64) *Account {
-	//validation carried out in the process of calling
-
 	firstTransaction := transactions.NewTransaction(0, "Credit", firstPayment, firstPayment, "self", "self")
-	var passbook []*transactions.Transaction
-	passbook = append(passbook, firstTransaction)
 	return &Account{
 		AccountNo: accountNo,
 		BankID:    bankID,
 		Balance:   firstPayment,
 		IsActive:  true,
-		Passbook:  passbook,
+		Passbook:  []*transactions.Transaction{firstTransaction},
 	}
 }
 
-func (a *Account) Deposit(amount float64, ids ...string) {
+// GetAccountNumber returns the account number.
+func (a *Account) GetAccountNumber() int {
+	return a.AccountNo
+}
+
+// GetBankID returns the bank ID associated with the account.
+func (a *Account) GetBankID() int {
+	return a.BankID
+}
+
+// GetActivityStatus returns the active status of the account.
+func (a *Account) GetActivityStatus() bool {
+	return a.IsActive
+}
+
+// GetBalance returns the current balance of the account.
+func (a *Account) GetBalance() float64 {
+	return a.Balance
+}
+
+// Deposit adds the specified amount to the account balance.
+func (a *Account) Deposit(amount float64, ids ...string) error {
 	if amount <= 0 {
-		fmt.Println("Deposit amount should be greater than 0")
-		return
+		return errInvalidDepositAmount
 	}
 	a.Balance += amount
-	tranID := 0
-	if len(a.Passbook) != 0 {
-		tranID = a.Passbook[len(a.Passbook)-1].GetTransactionID() + 1
-	}
-	var tempTransaction *transactions.Transaction
-	if ids == nil {
-		tempTransaction = transactions.NewTransaction(tranID, "Credit", amount, a.Balance, "self", "self")
-	} else {
-		tempTransaction = transactions.NewTransaction(tranID, "Credit", amount, a.Balance, ids[0], ids[1])
-	}
-
-	a.Passbook = append(a.Passbook, tempTransaction)
+	transaction := a.createTransaction("Credit", amount, ids...)
+	a.Passbook = append(a.Passbook, transaction)
 	fmt.Printf("Deposited Rs. %.2f to account %d\n", amount, a.AccountNo)
+	return nil
 }
 
-func (a *Account) Withdraw(amount float64, ids ...string) {
+// Withdraw removes the specified amount from the account balance.
+func (a *Account) Withdraw(amount float64, ids ...string) error {
 	if amount > a.Balance {
-		fmt.Println("Insufficient balance for withdrawal")
-		return
+		return errInsufficientBalance
 	}
 	a.Balance -= amount
-	tranID := 0
-	if len(a.Passbook) != 0 {
-		tranID = a.Passbook[len(a.Passbook)-1].GetTransactionID() + 1
-	}
-	var tempTransaction *transactions.Transaction
-	if ids == nil {
-		tempTransaction = transactions.NewTransaction(tranID, "Debit", amount, a.Balance, "self", "self")
-	} else {
-		tempTransaction = transactions.NewTransaction(tranID, "Debit", amount, a.Balance, ids[0], ids[1])
-	}
-	// tempTransaction := transactions.NewTransaction(tranID, "Debit", amount, a.Balance, "self", "self")
-	a.Passbook = append(a.Passbook, tempTransaction)
+	transaction := a.createTransaction("Debit", amount, ids...)
+	a.Passbook = append(a.Passbook, transaction)
 	fmt.Printf("Withdrew Rs. %.2f from account %d\n", amount, a.AccountNo)
+	return nil
 }
 
-func (a *Account) Transfer(toAccount *Account, amount float64) {
-	if amount > a.Balance {
-		fmt.Println("Insufficient balance for transfer")
-		return
+// Transfer moves the specified amount from this account to another account.
+func (a *Account) Transfer(toAccount *Account, amount float64) error {
+	if err := a.Withdraw(amount, strconv.Itoa(toAccount.BankID), strconv.Itoa(toAccount.AccountNo)); err != nil {
+		return err
 	}
-	toBankID := strconv.Itoa(toAccount.BankID)
-	toAccNo := strconv.Itoa(toAccount.AccountNo)
-	fromBankID := strconv.Itoa(a.BankID)
-	fromAccNo := strconv.Itoa(a.AccountNo)
-	a.Withdraw(amount, toBankID, toAccNo)
-	toAccount.Deposit(amount, fromBankID, fromAccNo)
-	fmt.Printf("Transferred Rs. %.2f from account %d to account %d\n", amount, a.AccountNo, toAccount.AccountNo)
+	return toAccount.Deposit(amount, strconv.Itoa(a.BankID), strconv.Itoa(a.AccountNo))
 }
 
+// RemoveAccount deactivates the account.
 func (a *Account) RemoveAccount() {
 	a.IsActive = false
 }
 
+// GetPassbook displays the transaction history in a tabular format.
 func (a *Account) GetPassbook() {
 	fmt.Printf("%-15s %-15s %-10s %-15s %-20s %-20s %-20s\n", "Transaction ID", "Type", "Amount", "New Balance", "Correspondent Bank", "Correspondent Account", "Timestamp")
-	fmt.Println(strings.Repeat("-", 110)) // Line for header separation
+	fmt.Println(strings.Repeat("-", 110))
 
-	// Print each transaction in a table format
 	for _, tran := range a.Passbook {
 		fmt.Printf("%-15d %-15s %-10.2f %-15.2f %-20s %-20s %-20s\n",
 			tran.TransactionID,
@@ -119,4 +109,17 @@ func (a *Account) GetPassbook() {
 			tran.TimeStamp.Format("2006-01-02 15:04:05"),
 		)
 	}
+}
+
+// createTransaction creates a new transaction with the current account state.
+func (a *Account) createTransaction(transactionType string, amount float64, ids ...string) *transactions.Transaction {
+	tranID := 0
+	if len(a.Passbook) != 0 {
+		tranID = a.Passbook[len(a.Passbook)-1].GetTransactionID() + 1
+	}
+
+	if len(ids) == 0 {
+		return transactions.NewTransaction(tranID, transactionType, amount, a.Balance, "self", "self")
+	}
+	return transactions.NewTransaction(tranID, transactionType, amount, a.Balance, ids[0], ids[1])
 }

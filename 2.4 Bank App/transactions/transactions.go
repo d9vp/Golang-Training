@@ -4,6 +4,7 @@ import (
 	"time"
 )
 
+// Transaction represents a financial transaction.
 type Transaction struct {
 	TransactionID            int
 	TransactionType          string
@@ -14,18 +15,20 @@ type Transaction struct {
 	TimeStamp                time.Time
 }
 
-func NewTransaction(transactionID int, transactionType string, amount, newBalance float64, bankIDofcorr, accountIDofcorr string) *Transaction {
+// NewTransaction creates a new transaction with the given details.
+func NewTransaction(transactionID int, transactionType string, amount, newBalance float64, bankIDOfCorr, accountIDOfCorr string) *Transaction {
 	return &Transaction{
 		TransactionID:            transactionID,
 		TransactionType:          transactionType,
 		Amount:                   amount,
 		NewBalance:               newBalance,
-		BankIDOfCorrespondent:    bankIDofcorr,
-		AccountIDOfCorrespondent: accountIDofcorr,
+		BankIDOfCorrespondent:    bankIDOfCorr,
+		AccountIDOfCorrespondent: accountIDOfCorr,
 		TimeStamp:                time.Now(),
 	}
 }
 
+// GetTransactionID returns the transaction ID.
 func (tran *Transaction) GetTransactionID() int {
 	return tran.TransactionID
 }
