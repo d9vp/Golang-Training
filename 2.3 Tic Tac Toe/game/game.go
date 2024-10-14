@@ -2,5 +2,5 @@
 package game
 
 type Game interface {
-	Play(parameters ...interface{})
+	Play(parameters ...interface{}) error
 }
