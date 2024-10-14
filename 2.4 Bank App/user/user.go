@@ -9,27 +9,27 @@ import (
 
 type Admin interface {
 	NewUser(firstName, lastName string) (*User, error)
-	GetUsers()
-	UpdateUsers(userID int, parameter string, newValue interface{})
-	DeleteUsers(userID int)
+	GetUsers() error
+	UpdateUsers(userID int, parameter string, newValue interface{}) error
+	DeleteUsers(userID int) error
 	NewBank(fullName, abbreviation string) (bank.BankFunctions, error)
-	GetBanks()
-	UpdateBank(bankID int, parameter string, newValue string)
-	DeleteBank(bankID int)
-	AddLedgerRecord(senderBankID, receiverBankID int, amount float64) *User
-	GetLedgerRecord(bankID int) *User
+	GetBanks() error
+	UpdateBank(bankID int, parameter string, newValue string) error
+	DeleteBank(bankID int) error
+	AddLedgerRecord(senderBankID, receiverBankID int, amount float64) error
+	GetLedgerRecord(bankID int) error
 }
 
 type Customer interface {
-	NewAccount(bankID int, initialPayment float64) *User
-	GetAccounts()
-	DeleteAccount(bankID, accountNo int)
+	NewAccount(bankID int, initialPayment float64) error
+	GetAccounts() error
+	DeleteAccount(bankID, accountNo int) error
 	GetTotalBalance() float64
-	DepositToAccount(accountNo int, bankID int, amount float64) *User
-	WithdrawFromAccount(accountNo int, bankID int, amount float64) *User
-	TransferFunds(fromAccountID, fromBankID, toAccountID, toBankID int, amount float64) *User
-	TransferBetweenUsers(fromAccountNo, fromBankID, toCustID, toAccountNo, toBankID int, amount float64) *User
-	GetPassbook(accountID int, bankID int) *User
+	DepositToAccount(accountNo int, bankID int, amount float64) error
+	WithdrawFromAccount(accountNo int, bankID int, amount float64) error
+	TransferFunds(fromAccountID, fromBankID, toAccountID, toBankID int, amount float64) error
+	TransferBetweenUsers(fromAccountNo, fromBankID, toCustID, toAccountNo, toBankID int, amount float64) error
+	GetPassbook(accountID int, bankID int) error
 }
 
 type User struct {
@@ -128,10 +128,9 @@ func (c *User) NewBank(fullName, abbreviation string) (bank.BankFunctions, error
 	return bank1, nil
 }
 
-func (c *User) GetUsers() {
+func (c *User) GetUsers() error {
 	if err := c.checkAdminAccess(); err != nil {
-		fmt.Println(err)
-		return
+		return err
 	}
 	fmt.Println("All Users are listed as follows:")
 	for _, cust := range AllUsers {
@@ -140,6 +139,7 @@ func (c *User) GetUsers() {
 				cust.UserID, cust.FirstName, cust.LastName, cust.IsAdmin)
 		}
 	}
+	return nil
 }
 
 func (c *User) findUserByID(userID int) *User {
@@ -151,31 +151,27 @@ func (c *User) findUserByID(userID int) *User {
 	return nil
 }
 
-func (c *User) UpdateUsers(userID int, parameter string, newValue interface{}) {
+func (c *User) UpdateUsers(userID int, parameter string, newValue interface{}) error {
 	if err := c.checkAdminAccess(); err != nil {
-		fmt.Println(err)
-		return
+		return err
 	}
 	user := c.findUserByID(userID)
 	if user == nil {
-		fmt.Println("no such user id found")
-		return
+		return errors.New("no such user id found")
 	}
 
 	switch parameter {
 	case "First Name":
 		if value, ok := newValue.(string); ok {
 			if err := validateName(value, user.LastName); err != nil {
-				fmt.Println(err)
-				return
+				return err
 			}
 			user.FirstName = value
 		}
 	case "Last Name":
 		if value, ok := newValue.(string); ok {
 			if err := validateName(user.FirstName, value); err != nil {
-				fmt.Println(err)
-				return
+				return err
 			}
 			user.LastName = value
 		}
@@ -184,23 +180,22 @@ func (c *User) UpdateUsers(userID int, parameter string, newValue interface{}) {
 			user.IsAdmin = value
 		}
 	default:
-		fmt.Println("Invalid parameter entered")
+		return errors.New("invalid parameter entered")
 	}
+	return nil
 }
 
-func (c *User) DeleteUsers(userID int) {
+func (c *User) DeleteUsers(userID int) error {
 	if !c.IsActive {
-		fmt.Println("no such user found")
-		return
+		return errors.New("no such user found")
 	}
 	if err := c.checkAdminAccess(); err != nil {
 		fmt.Println(err)
-		return
+		return err
 	}
 	user := c.findUserByID(userID)
 	if user == nil {
-		fmt.Println("no such user id found")
-		return
+		return errors.New("no such user id found")
 	}
 	user.IsActive = false
 	for _, acc := range user.Accounts {
@@ -208,12 +203,12 @@ func (c *User) DeleteUsers(userID int) {
 			acc.RemoveAccount()
 		}
 	}
+	return nil
 }
 
-func (c *User) GetBanks() {
+func (c *User) GetBanks() error {
 	if err := c.checkAdminAccess(); err != nil {
-		fmt.Println(err)
-		return
+		return err
 	}
 	fmt.Println("All Banks are listed as follows:")
 	for _, bank := range bank.AllBanks {
@@ -222,75 +217,71 @@ func (c *User) GetBanks() {
 				bank.GetBankID(), bank.GetBankName(), bank.GetBankAbbreviation())
 		}
 	}
+	return nil
 }
 
-func (c *User) UpdateBank(bankID int, parameter string, newValue string) {
+func (c *User) UpdateBank(bankID int, parameter string, newValue string) error {
 	if err := c.checkAdminAccess(); err != nil {
-		fmt.Println(err)
-		return
+		return err
 	}
 	for _, bank := range bank.AllBanks {
 		if bank.GetBankID() == bankID && bank.GetActivityStatus() {
-			bank.UpdateBankInformation(parameter, newValue)
-			return
+			err := bank.UpdateBankInformation(parameter, newValue)
+			if err != nil {
+				return err
+			}
+			return nil
 		}
 	}
-	fmt.Println("no such bank found")
+	return errors.New("no such bank found")
 }
 
-func (c *User) DeleteBank(bankID int) {
+func (c *User) DeleteBank(bankID int) error {
 	if !c.IsActive {
-		fmt.Println("no such customer found")
-		return
+		return errors.New("no such customer found")
 	}
 	if err := c.checkAdminAccess(); err != nil {
-		fmt.Println(err)
-		return
+		return err
 	}
 	for _, bank := range bank.AllBanks {
 		if bank.GetBankID() == bankID && bank.GetActivityStatus() {
 			bank.RemoveBank()
 		}
 	}
+	return nil
 }
 
-func (c *User) NewAccount(bankID int, initialPayment float64) *User {
+func (c *User) NewAccount(bankID int, initialPayment float64) error {
 	if err := c.checkUserAccess(); err != nil {
-		fmt.Println(err)
-		return c
+		return err
 	}
 	if initialPayment < 1000.0 {
-		fmt.Println("initial payment must be at least 1000")
-		return c
+		return errors.New("initial payment must be at least 1000")
 	}
 	// allBanks :=
 	for _, ban := range bank.GetAllBanks() {
 		if ban.GetBankID() == bankID {
 			acc, err := ban.AddAccount(initialPayment)
 			if err != nil {
-				fmt.Println(err)
-				return c
+				return err
 			}
 			c.Accounts = append(c.Accounts, acc)
-			return c
+			return nil
 		}
 	}
-	fmt.Println("incorrect bank id entered")
-	return c
+	return errors.New("incorrect bank id entered")
 }
 
-func (c *User) GetAccounts() {
+func (c *User) GetAccounts() error {
 	if !c.IsActive {
-		fmt.Println("No such user found")
-		return
+		return errors.New("no such user found")
 	}
 	if err := c.checkUserAccess(); err != nil {
 		fmt.Println(err)
-		return
+		return err
 	}
 	if len(c.Accounts) == 0 {
-		fmt.Println("No accounts found")
-		return
+		return errors.New("no accounts found")
 	}
 
 	for _, acc := range c.Accounts {
@@ -300,24 +291,23 @@ func (c *User) GetAccounts() {
 		}
 	}
 	fmt.Printf("\nTotal Balance: %.2f\n", c.GetTotalBalance())
+	return nil
 }
 
-func (c *User) DeleteAccount(bankID, accountNo int) {
+func (c *User) DeleteAccount(bankID, accountNo int) error {
 	if !c.IsActive {
-		fmt.Println("No such user found")
-		return
+		return errors.New("no such user found")
 	}
 	if err := c.checkUserAccess(); err != nil {
-		fmt.Println(err)
-		return
+		return err
 	}
 	for _, acc := range c.Accounts {
 		if acc.GetAccountNumber() == accountNo && acc.GetBankID() == bankID {
 			acc.RemoveAccount()
-			return
+			return nil
 		}
 	}
-	fmt.Println("Account not found")
+	return errors.New("account not found")
 }
 
 func (c *User) GetTotalBalance() float64 {
@@ -335,40 +325,41 @@ func (c *User) GetTotalBalance() float64 {
 	return total
 }
 
-func (c *User) DepositToAccount(accountNo int, bankID int, amount float64) *User {
+func (c *User) DepositToAccount(accountNo int, bankID int, amount float64) error {
 	if err := c.checkUserAccess(); err != nil {
-		fmt.Println(err)
-		return c
+		return err
 	}
 	for _, acc := range c.Accounts {
 		if acc.GetAccountNumber() == accountNo && acc.GetBankID() == bankID && acc.GetActivityStatus() {
-			acc.Deposit(amount)
-			return c
+			err := acc.Deposit(amount)
+			if err != nil {
+				return err
+			}
+			return nil
 		}
 	}
-	fmt.Println("account not found for this user")
-	return c
+	return errors.New("account not found for this user")
 }
 
-func (c *User) WithdrawFromAccount(accountNo int, bankID int, amount float64) *User {
+func (c *User) WithdrawFromAccount(accountNo int, bankID int, amount float64) error {
 	if err := c.checkUserAccess(); err != nil {
-		fmt.Println(err)
-		return c
+		return err
 	}
 	for _, acc := range c.Accounts {
 		if acc.GetAccountNumber() == accountNo && acc.GetBankID() == bankID && acc.GetActivityStatus() {
-			acc.Withdraw(amount)
-			return c
+			err := acc.Withdraw(amount)
+			if err != nil {
+				return err
+			}
+			return nil
 		}
 	}
-	fmt.Println("account not found for this user")
-	return c
+	return errors.New("account not found for this user")
 }
 
-func (c *User) TransferFunds(fromAccountID, fromBankID, toAccountID, toBankID int, amount float64) *User {
+func (c *User) TransferFunds(fromAccountID, fromBankID, toAccountID, toBankID int, amount float64) error {
 	if err := c.checkUserAccess(); err != nil {
-		fmt.Println(err)
-		return c
+		return err
 	}
 	var fromAcc account.AccountFunctions
 	var toAcc account.AccountFunctions
@@ -382,93 +373,87 @@ func (c *User) TransferFunds(fromAccountID, fromBankID, toAccountID, toBankID in
 		}
 	}
 	if fromAcc != nil && toAcc != nil {
-		fromAcc.Withdraw(amount)
-		toAcc.Deposit(amount)
-		return c
+		err1 := fromAcc.Withdraw(amount)
+		if err1 != nil {
+			return err1
+		}
+		err2 := toAcc.Deposit(amount)
+		if err2 != nil {
+			return err2
+		}
+		return nil
 	}
-	fmt.Println("account not found for this user")
-	return c
+	return errors.New("no such accounrt found")
 }
 
-func (c *User) TransferBetweenUsers(fromAccountNo, fromBankID, toCustID, toAccountNo, toBankID int, amount float64) *User {
+func (c *User) TransferBetweenUsers(fromAccountNo, fromBankID, toCustID, toAccountNo, toBankID int, amount float64) error {
 	if err := c.checkUserAccess(); err != nil {
-		fmt.Println(err)
-		return c
+		return err
 	}
 
 	fromAccount := c.findAccount(fromAccountNo, fromBankID)
 	if fromAccount == nil {
-		fmt.Println("Invalid sending account")
-		return c
+		return errors.New("invalid sending account")
 	}
 
 	toUser := c.findUserByID(toCustID)
 	if toUser == nil {
-		fmt.Println("No such receiving user ID found")
-		return c
+		return errors.New("no such receiving user id found")
 	}
 
 	toAccount := toUser.findAccount(toAccountNo, toBankID)
 	if toAccount == nil {
-		fmt.Println("Invalid receiving account")
-		return c
+		return errors.New("invalid receiving account")
 	}
 
 	fromAccount.Transfer(toAccount, amount)
-	return c
+	return nil
 }
 
-func (c *User) GetPassbook(accountID int, bankID int) *User {
+func (c *User) GetPassbook(accountID int, bankID int) error {
 	if err := c.checkUserAccess(); err != nil {
-		fmt.Println(err)
-		return c
+		return err
 	}
 
 	account := c.findAccount(accountID, bankID)
 	if account == nil {
-		fmt.Println("No such account found")
-		return c
+		return errors.New("no such account found")
 	}
 
 	account.GetPassbook()
-	return c
+	return nil
 }
 
-func (c *User) AddLedgerRecord(senderBankID, receiverBankID int, amount float64) *User {
+func (c *User) AddLedgerRecord(senderBankID, receiverBankID int, amount float64) error {
 	if err := c.checkAdminAccess(); err != nil {
-		fmt.Println(err)
-		return c
+		return err
 	}
 
 	senderBank := bank.FindBank(senderBankID)
 	if senderBank == nil {
-		fmt.Println("No such sender bank ID found")
-		return c
+		return errors.New("no such sender bank id found")
 	}
 
 	receiverBank := bank.FindBank(receiverBankID)
 	if receiverBank == nil {
-		fmt.Println("No such receiver bank ID found")
-		return c
+		return errors.New("no such receiver bank id found")
 	}
 
 	senderBank.AddToLedger(receiverBank.GetBankID(), amount)
 	receiverBank.AddToLedger(senderBank.GetBankID(), -amount)
-	return c
+	return nil
 }
 
-func (c *User) GetLedgerRecord(bankID int) *User {
+func (c *User) GetLedgerRecord(bankID int) error {
 	if err := c.checkAdminAccess(); err != nil {
-		fmt.Println(err)
-		return c
+		return err
 	}
 
 	ban := bank.FindBank(bankID)
 	if ban == nil {
-		fmt.Println("No such bank found")
-		return c
+		return errors.New("no such bank found")
 	}
 
 	ban.GetLedgerRecord()
-	return c
+	return nil
 }
