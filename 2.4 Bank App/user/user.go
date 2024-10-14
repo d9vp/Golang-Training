@@ -8,11 +8,11 @@ import (
 )
 
 type Admin interface {
-	NewUser(firstName, lastName string) User
+	NewUser(firstName, lastName string) (*User, error)
 	GetUsers()
 	UpdateUsers(userID int, parameter string, newValue interface{})
 	DeleteUsers(userID int)
-	NewBank(fullName, abbreviation string) *User
+	NewBank(fullName, abbreviation string) (bank.BankFunctions, error)
 	GetBanks()
 	UpdateBank(bankID int, parameter string, newValue string)
 	DeleteBank(bankID int)
@@ -38,7 +38,7 @@ type User struct {
 	LastName  string
 	IsAdmin   bool
 	IsActive  bool
-	Accounts  []*account.Account
+	Accounts  []account.AccountFunctions
 }
 
 var AllUsers = []*User{}
@@ -64,9 +64,9 @@ func findUserID() int {
 	return AllUsers[len(AllUsers)-1].UserID + 1
 }
 
-func (c *User) findAccount(accountNo, bankID int) *account.Account {
+func (c *User) findAccount(accountNo, bankID int) account.AccountFunctions {
 	for _, acc := range c.Accounts {
-		if acc.GetAccountNumber() == accountNo && acc.GetBankID() == bankID && acc.IsActive {
+		if acc.GetAccountNumber() == accountNo && acc.GetBankID() == bankID && acc.GetActivityStatus() {
 			return acc
 		}
 	}
@@ -113,19 +113,19 @@ func (c *User) NewUser(firstName, lastName string) (*User, error) {
 		LastName:  lastName,
 		IsAdmin:   false,
 		IsActive:  true,
-		Accounts:  []*account.Account{},
+		Accounts:  []account.AccountFunctions{},
 	}
 	AllUsers = append(AllUsers, tempCust)
 	return tempCust, nil
 }
 
-func (c *User) NewBank(fullName, abbreviation string) *User {
+func (c *User) NewBank(fullName, abbreviation string) (bank.BankFunctions, error) {
 	if err := c.checkAdminAccess(); err != nil {
-		fmt.Println(err)
-		return c
+		return nil, err
 	}
-	_, _ = bank.NewBank(fullName, abbreviation)
-	return c
+	var bank1 bank.BankFunctions
+	bank1, _ = bank.NewBank(fullName, abbreviation)
+	return bank1, nil
 }
 
 func (c *User) GetUsers() {
@@ -204,7 +204,7 @@ func (c *User) DeleteUsers(userID int) {
 	}
 	user.IsActive = false
 	for _, acc := range user.Accounts {
-		if acc.IsActive {
+		if acc.GetActivityStatus() {
 			acc.RemoveAccount()
 		}
 	}
@@ -219,7 +219,7 @@ func (c *User) GetBanks() {
 	for _, bank := range bank.AllBanks {
 		if bank.GetActivityStatus() {
 			fmt.Printf("Bank ID:\t%d\nBank Name:\t%s\nAbbreviation:\t%s\n",
-				bank.BankID, bank.FullName, bank.Abbreviation)
+				bank.GetBankID(), bank.GetBankName(), bank.GetBankAbbreviation())
 		}
 	}
 }
@@ -230,7 +230,7 @@ func (c *User) UpdateBank(bankID int, parameter string, newValue string) {
 		return
 	}
 	for _, bank := range bank.AllBanks {
-		if bank.GetBankID() == bankID && bank.IsActive {
+		if bank.GetBankID() == bankID && bank.GetActivityStatus() {
 			bank.UpdateBankInformation(parameter, newValue)
 			return
 		}
@@ -265,7 +265,7 @@ func (c *User) NewAccount(bankID int, initialPayment float64) *User {
 	}
 	// allBanks :=
 	for _, ban := range bank.GetAllBanks() {
-		if ban.BankID == bankID {
+		if ban.GetBankID() == bankID {
 			acc, err := ban.AddAccount(initialPayment)
 			if err != nil {
 				fmt.Println(err)
@@ -370,8 +370,8 @@ func (c *User) TransferFunds(fromAccountID, fromBankID, toAccountID, toBankID in
 		fmt.Println(err)
 		return c
 	}
-	var fromAcc *account.Account
-	var toAcc *account.Account
+	var fromAcc account.AccountFunctions
+	var toAcc account.AccountFunctions
 
 	for _, acc := range c.Accounts {
 		if acc.GetAccountNumber() == fromAccountID && acc.GetBankID() == fromBankID {

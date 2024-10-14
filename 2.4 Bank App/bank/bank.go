@@ -1,4 +1,3 @@
-// deprecating, using bankwithledger.go instead
 package bank
 
 import (
@@ -6,18 +5,31 @@ import (
 	"errors"
 )
 
-// Bank represents a banking institution.
-type bank struct {
+type BankFunctions interface {
+	// NewBank(fullName, abbreviation string) (*Bank, error)
+	AddAccount(initialPayment float64) (account.AccountFunctions, error)
+	UpdateBankInformation(parameter, value string) error
+	RemoveBank()
+	findAccountIDforBank() int
+	GetBankID() int
+	GetBankName() string
+	GetActivityStatus() bool
+	GetBankAbbreviation() string
+	AddToLedger(correspondingBankID int, amount float64)
+	GetLedgerRecord()
+}
+
+type Bank struct {
 	BankID       int
 	FullName     string
 	Abbreviation string
 	IsActive     bool
-	Accounts     []*account.Account
-	// Ledger       map[string]float64
+	Accounts     []account.AccountFunctions
+	Ledger       []*Ledger
 }
 
-// allBanks stores all bank instances.
-var allBanks = []*bank{}
+// AllBanks stores all bank instances.
+var AllBanks = []BankFunctions{}
 
 // Error messages
 var (
@@ -30,29 +42,28 @@ var (
 
 // findBankID generates the next bank ID.
 func findBankID() int {
-	if len(allBanks) == 0 {
+	if len(AllBanks) == 0 {
 		return 0
 	}
-	return allBanks[len(allBanks)-1].BankID + 1
+	return AllBanks[len(AllBanks)-1].GetBankID() + 1
 }
 
 // NewBank creates a new bank and returns a pointer to it.
-func newBank(fullName, abbreviation string) (*bank, error) {
+func NewBank(fullName, abbreviation string) (BankFunctions, error) {
 	if err := validateBankName(fullName, abbreviation); err != nil {
 		return nil, err
 	}
-
-	b := &bank{
+	var ban BankFunctions = &Bank{
 		BankID:       findBankID(),
 		FullName:     fullName,
 		Abbreviation: abbreviation,
 		IsActive:     true,
-		Accounts:     []*account.Account{},
-		// Ledger:       make(map[string]float64),
+		Accounts:     []account.AccountFunctions{},
+		Ledger:       nil,
 	}
 
-	allBanks = append(allBanks, b)
-	return b, nil
+	AllBanks = append(AllBanks, ban)
+	return ban, nil
 }
 
 // validateBankName checks that bank names are not empty.
@@ -67,66 +78,68 @@ func validateBankName(fullName, abbreviation string) error {
 }
 
 // GetActivityStatus returns the bank's active status.
-func (b *Bank) getActivityStatus() bool {
+func (b *Bank) GetActivityStatus() bool {
 	return b.IsActive
 }
 
 // GetBankID returns the bank's ID.
-func (b *Bank) getBankID() int {
+func (b *Bank) GetBankID() int {
 	return b.BankID
 }
 
-func (b *Bank) getBankName() string {
+func (b *Bank) GetBankName() string {
 	return b.FullName
 }
 
-func getallBanks() []*bank {
-	return allBanks
+func GetAllBanks() []BankFunctions {
+	return AllBanks
+}
+
+func (b *Bank) GetBankAbbreviation() string {
+	return b.Abbreviation
 }
 
 // FindBankByID returns the bank's full name by its ID.
-func findBankByID(bankID int) string {
-	for _, bank := range allBanks {
-		if bank.BankID == bankID {
-			return bank.FullName
+func FindBankByID(bankID int) string {
+	for _, bank := range AllBanks {
+		if bank.GetBankID() == bankID {
+			return bank.GetBankName()
 		}
 	}
 	return ""
 }
 
-func findBank(bankID int) *bank {
-	for _, bank := range allBanks {
-		if bank.BankID == bankID {
+func FindBank(bankID int) BankFunctions {
+	for _, bank := range AllBanks {
+		if bank.GetBankID() == bankID {
 			return bank
 		}
 	}
 	return nil
 }
+func (b *Bank) findAccountIDforBank() int {
+	if len(b.Accounts) == 0 {
+		return 0
+	}
+	return b.Accounts[len(b.Accounts)-1].GetAccountNumber() + 1
+}
 
 // AddAccount creates a new account for the bank with the specified initial payment.
-func (b *bank) AddAccount(initialPayment float64) (*account.Account, error) {
+func (b *Bank) AddAccount(initialPayment float64) (account.AccountFunctions, error) {
 	if !b.IsActive {
 		return nil, errInactiveBank
 	}
 
 	accountNo := b.findAccountIDforBank()
-	newAccount := account.NewAccount(accountNo, b.BankID, initialPayment)
+	var newAccount account.AccountFunctions = account.NewAccount(accountNo, b.BankID, initialPayment)
 	b.Accounts = append(b.Accounts, newAccount)
 	return newAccount, nil
 }
 
-// findAccountIDforBank generates the next account ID for the bank.
-func (b *bank) findAccountIDforBank() int {
-	if len(b.Accounts) == 0 {
-		return 0
-	}
-	return b.Accounts[len(b.Accounts)-1].AccountNo + 1
-}
-
 // GetAccountByID retrieves an account by its account number.
-func (b *bank) GetAccountByID(accountNo int) (*account.Account, error) {
+func (b *Bank) GetAccountByID(accountNo int) (account.AccountFunctions, error) {
 	for _, acc := range b.Accounts {
-		if acc.AccountNo == accountNo {
+		if acc.GetAccountNumber() == accountNo {
 			return acc, nil
 		}
 	}
@@ -134,7 +147,7 @@ func (b *bank) GetAccountByID(accountNo int) (*account.Account, error) {
 }
 
 // UpdateBankInformation updates the bank's information based on the provided parameter and value.
-func (b *Bank) updateBankInformation(parameter, value string) error {
+func (b *Bank) UpdateBankInformation(parameter, value string) error {
 	switch parameter {
 	case "Full Bank Name":
 		if value == "" {
@@ -153,7 +166,7 @@ func (b *Bank) updateBankInformation(parameter, value string) error {
 }
 
 // RemoveBank marks the bank as inactive and removes all its accounts.
-func (b *Bank) removeBank() {
+func (b *Bank) RemoveBank() {
 	for _, acc := range b.Accounts {
 		acc.RemoveAccount()
 	}

@@ -6,17 +6,21 @@ import (
 )
 
 func main() {
-	admin1 := user.NewAdmin("Admin", "Admin")
-	customer1, _ := admin1.NewUser("Dev", "Patel")
-	customer2, _ := admin1.NewUser("Krish", "Pandya")
-	customer3, _ := admin1.NewUser("Vidhi", "Shah")
-	_ = admin1.NewBank("Global Bank", "GB")
-	_ = admin1.NewBank("National Bank", "NB")
-	_ = admin1.NewBank("Indian Bank", "IB")
+	var admin1 user.Admin = user.NewAdmin("Admin", "Admin")
+	var customer1, customer2, customer3 user.Customer
+	customer1, _ = admin1.NewUser("Dev", "Patel")
+	customer2, _ = admin1.NewUser("Krish", "Pandya")
+	customer3, _ = admin1.NewUser("Vidhi", "Shah")
+
+	_, _ = admin1.NewBank("Global Bank", "GB")
+	_, _ = admin1.NewBank("National Bank", "NB")
+	_, _ = admin1.NewBank("Indian Bank", "IB")
+
 	_ = customer1.NewAccount(0, 10000)
 	_ = customer1.NewAccount(1, 1500)
 	_ = customer2.NewAccount(0, 5000)
 	_ = customer3.NewAccount(1, 100000)
+
 	admin1.GetUsers()
 	// admin1.DeleteBank(0)
 	customer1.GetAccounts()

@@ -9,12 +9,16 @@ import (
 )
 
 type AccountFunctions interface {
-	NewAccount(accountNo, bankID int, firstPayment float64) *Account
+	// NewAccount(accountNo, bankID int, firstPayment float64) *Account
 	RemoveAccount()
 	GetPassbook()
 	Deposit(amount float64, ids ...string) error
 	Withdraw(amount float64, ids ...string) error
-	Transfer(toAccount *Account, amount float64) error
+	Transfer(toAccount AccountFunctions, amount float64) error
+	GetAccountNumber() int
+	GetBankID() int
+	GetActivityStatus() bool
+	GetBalance() float64
 }
 
 // Account represents a bank account.
@@ -90,8 +94,8 @@ func (a *Account) Withdraw(amount float64, ids ...string) error {
 }
 
 // Transfer moves the specified amount from this account to another account.
-func (a *Account) Transfer(toAccount *Account, amount float64) error {
-	if err := a.Withdraw(amount, strconv.Itoa(toAccount.BankID), strconv.Itoa(toAccount.AccountNo)); err != nil {
+func (a *Account) Transfer(toAccount AccountFunctions, amount float64) error {
+	if err := a.Withdraw(amount, strconv.Itoa(toAccount.GetBankID()), strconv.Itoa(toAccount.GetAccountNumber())); err != nil {
 		return err
 	}
 	return toAccount.Deposit(amount, strconv.Itoa(a.BankID), strconv.Itoa(a.AccountNo))
