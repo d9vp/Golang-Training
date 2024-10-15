@@ -6,7 +6,8 @@ import (
 )
 
 func main() {
-	var admin1 user.Admin = user.NewAdmin("Admin", "Admin")
+	var admin1 user.Admin
+	admin1, _ = user.NewAdmin("Admin", "Admin")
 	var customer1, customer2, customer3 user.Customer
 	customer1, _ = admin1.NewUser("Dev", "Patel")
 	customer2, _ = admin1.NewUser("Krish", "Pandya")

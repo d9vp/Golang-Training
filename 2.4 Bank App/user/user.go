@@ -41,18 +41,34 @@ type User struct {
 	Accounts  []account.AccountFunctions
 }
 
+// Error messages
+var (
+	errOnlyAdminsAccess   = errors.New("only admin access")
+	errOnlyCustomerAccess = errors.New("only user access")
+	errNoUserFound        = errors.New("no such user found")
+	errNoBankFound        = errors.New("no such bank found")
+	errNoAccountFound     = errors.New("no such account found")
+	errEmptyString        = errors.New("empty string cannot be used as name")
+)
+
 var AllUsers = []*User{}
 
 func (c *User) checkAdminAccess() error {
+	if !c.IsActive {
+		return errNoUserFound
+	}
 	if !c.IsAdmin {
-		return errors.New("only admin access")
+		return errOnlyAdminsAccess
 	}
 	return nil
 }
 
 func (c *User) checkUserAccess() error {
+	if !c.IsActive {
+		return errNoUserFound
+	}
 	if c.IsAdmin {
-		return errors.New("only user access")
+		return errOnlyCustomerAccess
 	}
 	return nil
 }
@@ -75,18 +91,17 @@ func (c *User) findAccount(accountNo, bankID int) account.AccountFunctions {
 
 func validateName(firstName, lastName string) error {
 	if firstName == "" {
-		return errors.New("first name cannot be empty")
+		return errEmptyString
 	}
 	if lastName == "" {
-		return errors.New("last name cannot be empty")
+		return errEmptyString
 	}
 	return nil
 }
 
-func NewAdmin(firstName, lastName string) *User {
+func NewAdmin(firstName, lastName string) (*User, error) {
 	if err := validateName(firstName, lastName); err != nil {
-		fmt.Println(err)
-		return nil
+		return nil, err
 	}
 	tempAdmin := &User{
 		UserID:    findUserID(),
@@ -97,7 +112,7 @@ func NewAdmin(firstName, lastName string) *User {
 		Accounts:  nil,
 	}
 	AllUsers = append(AllUsers, tempAdmin)
-	return tempAdmin
+	return tempAdmin, nil
 }
 
 func (c *User) NewUser(firstName, lastName string) (*User, error) {
@@ -157,7 +172,7 @@ func (c *User) UpdateUsers(userID int, parameter string, newValue interface{}) e
 	}
 	user := c.findUserByID(userID)
 	if user == nil {
-		return errors.New("no such user id found")
+		return errNoUserFound
 	}
 
 	switch parameter {
@@ -186,16 +201,12 @@ func (c *User) UpdateUsers(userID int, parameter string, newValue interface{}) e
 }
 
 func (c *User) DeleteUsers(userID int) error {
-	if !c.IsActive {
-		return errors.New("no such user found")
-	}
 	if err := c.checkAdminAccess(); err != nil {
-		fmt.Println(err)
 		return err
 	}
 	user := c.findUserByID(userID)
 	if user == nil {
-		return errors.New("no such user id found")
+		return errNoUserFound
 	}
 	user.IsActive = false
 	for _, acc := range user.Accounts {
@@ -233,13 +244,10 @@ func (c *User) UpdateBank(bankID int, parameter string, newValue string) error {
 			return nil
 		}
 	}
-	return errors.New("no such bank found")
+	return errNoBankFound
 }
 
 func (c *User) DeleteBank(bankID int) error {
-	if !c.IsActive {
-		return errors.New("no such customer found")
-	}
 	if err := c.checkAdminAccess(); err != nil {
 		return err
 	}
@@ -269,19 +277,16 @@ func (c *User) NewAccount(bankID int, initialPayment float64) error {
 			return nil
 		}
 	}
-	return errors.New("incorrect bank id entered")
+	return errNoBankFound
 }
 
 func (c *User) GetAccounts() error {
-	if !c.IsActive {
-		return errors.New("no such user found")
-	}
 	if err := c.checkUserAccess(); err != nil {
 		fmt.Println(err)
 		return err
 	}
 	if len(c.Accounts) == 0 {
-		return errors.New("no accounts found")
+		return errNoAccountFound
 	}
 
 	for _, acc := range c.Accounts {
@@ -295,9 +300,6 @@ func (c *User) GetAccounts() error {
 }
 
 func (c *User) DeleteAccount(bankID, accountNo int) error {
-	if !c.IsActive {
-		return errors.New("no such user found")
-	}
 	if err := c.checkUserAccess(); err != nil {
 		return err
 	}
@@ -307,7 +309,7 @@ func (c *User) DeleteAccount(bankID, accountNo int) error {
 			return nil
 		}
 	}
-	return errors.New("account not found")
+	return errNoAccountFound
 }
 
 func (c *User) GetTotalBalance() float64 {
@@ -338,7 +340,7 @@ func (c *User) DepositToAccount(accountNo int, bankID int, amount float64) error
 			return nil
 		}
 	}
-	return errors.New("account not found for this user")
+	return errNoAccountFound
 }
 
 func (c *User) WithdrawFromAccount(accountNo int, bankID int, amount float64) error {
@@ -354,7 +356,7 @@ func (c *User) WithdrawFromAccount(accountNo int, bankID int, amount float64) er
 			return nil
 		}
 	}
-	return errors.New("account not found for this user")
+	return errNoAccountFound
 }
 
 func (c *User) TransferFunds(fromAccountID, fromBankID, toAccountID, toBankID int, amount float64) error {
@@ -383,7 +385,7 @@ func (c *User) TransferFunds(fromAccountID, fromBankID, toAccountID, toBankID in
 		}
 		return nil
 	}
-	return errors.New("no such accounrt found")
+	return errNoAccountFound
 }
 
 func (c *User) TransferBetweenUsers(fromAccountNo, fromBankID, toCustID, toAccountNo, toBankID int, amount float64) error {
@@ -417,7 +419,7 @@ func (c *User) GetPassbook(accountID int, bankID int) error {
 
 	account := c.findAccount(accountID, bankID)
 	if account == nil {
-		return errors.New("no such account found")
+		return errNoAccountFound
 	}
 
 	account.GetPassbook()
@@ -451,7 +453,7 @@ func (c *User) GetLedgerRecord(bankID int) error {
 
 	ban := bank.FindBank(bankID)
 	if ban == nil {
-		return errors.New("no such bank found")
+		return errNoBankFound
 	}
 
 	ban.GetLedgerRecord()

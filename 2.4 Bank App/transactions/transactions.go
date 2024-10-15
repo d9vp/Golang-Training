@@ -1,10 +1,15 @@
 package transactions
 
 import (
+	"fmt"
 	"time"
 )
 
-// Transaction represents a financial transaction.
+type TransactionInterface interface {
+	GetTransactionID() int
+	GetTransaction()
+}
+
 type Transaction struct {
 	TransactionID            int
 	TransactionType          string
@@ -15,8 +20,7 @@ type Transaction struct {
 	TimeStamp                time.Time
 }
 
-// NewTransaction creates a new transaction with the given details.
-func NewTransaction(transactionID int, transactionType string, amount, newBalance float64, bankIDOfCorr, accountIDOfCorr string) *Transaction {
+func NewTransaction(transactionID int, transactionType string, amount, newBalance float64, bankIDOfCorr, accountIDOfCorr string) TransactionInterface {
 	return &Transaction{
 		TransactionID:            transactionID,
 		TransactionType:          transactionType,
@@ -28,7 +32,18 @@ func NewTransaction(transactionID int, transactionType string, amount, newBalanc
 	}
 }
 
-// GetTransactionID returns the transaction ID.
 func (tran *Transaction) GetTransactionID() int {
 	return tran.TransactionID
+}
+
+func (tran *Transaction) GetTransaction() {
+	fmt.Printf("%-15d %-15s %-10.2f %-15.2f %-20s %-20s %-20s\n",
+		tran.TransactionID,
+		tran.TransactionType,
+		tran.Amount,
+		tran.NewBalance,
+		tran.BankIDOfCorrespondent,
+		tran.AccountIDOfCorrespondent,
+		tran.TimeStamp.Format("2006-01-02 15:04:05"),
+	)
 }

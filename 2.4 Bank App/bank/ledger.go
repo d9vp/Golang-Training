@@ -15,7 +15,6 @@ func NewLedger(correspondingBankID int, amount float64) *Ledger {
 	}
 }
 
-// AddToLedger records or updates a transaction in the bank's ledger.
 func (b *Bank) AddToLedger(correspondingBankID int, amount float64) {
 	for i, entry := range b.Ledger {
 		if entry.BankName == FindBankByID(correspondingBankID) {
