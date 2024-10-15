@@ -5,8 +5,8 @@ import (
 	"errors"
 )
 
-type BankFunctions interface {
-	AddAccount(initialPayment float64) (account.AccountFunctions, error)
+type BankInterface interface {
+	AddAccount(initialPayment float64) (account.AccountInterface, error)
 	UpdateBankInformation(parameter, value string) error
 	RemoveBank()
 	findAccountIDforBank() int
@@ -23,11 +23,11 @@ type Bank struct {
 	FullName     string
 	Abbreviation string
 	IsActive     bool
-	Accounts     []account.AccountFunctions
+	Accounts     []account.AccountInterface
 	Ledger       []*Ledger
 }
 
-var AllBanks = []BankFunctions{}
+var AllBanks = []BankInterface{}
 
 var (
 	errEmptyFullName     = errors.New("bank full name cannot be empty")
@@ -44,16 +44,16 @@ func findBankID() int {
 	return AllBanks[len(AllBanks)-1].GetBankID() + 1
 }
 
-func NewBank(fullName, abbreviation string) (BankFunctions, error) {
+func NewBank(fullName, abbreviation string) (BankInterface, error) {
 	if err := validateBankName(fullName, abbreviation); err != nil {
 		return nil, err
 	}
-	var ban BankFunctions = &Bank{
+	var ban BankInterface = &Bank{
 		BankID:       findBankID(),
 		FullName:     fullName,
 		Abbreviation: abbreviation,
 		IsActive:     true,
-		Accounts:     []account.AccountFunctions{},
+		Accounts:     []account.AccountInterface{},
 		Ledger:       nil,
 	}
 
@@ -83,7 +83,7 @@ func (b *Bank) GetBankName() string {
 	return b.FullName
 }
 
-func GetAllBanks() []BankFunctions {
+func GetAllBanks() []BankInterface {
 	return AllBanks
 }
 
@@ -100,7 +100,7 @@ func FindBankByID(bankID int) string {
 	return ""
 }
 
-func FindBank(bankID int) BankFunctions {
+func FindBank(bankID int) BankInterface {
 	for _, bank := range AllBanks {
 		if bank.GetBankID() == bankID {
 			return bank
@@ -115,18 +115,18 @@ func (b *Bank) findAccountIDforBank() int {
 	return b.Accounts[len(b.Accounts)-1].GetAccountNumber() + 1
 }
 
-func (b *Bank) AddAccount(initialPayment float64) (account.AccountFunctions, error) {
+func (b *Bank) AddAccount(initialPayment float64) (account.AccountInterface, error) {
 	if !b.IsActive {
 		return nil, errInactiveBank
 	}
 
 	accountNo := b.findAccountIDforBank()
-	var newAccount account.AccountFunctions = account.NewAccount(accountNo, b.BankID, initialPayment)
+	var newAccount account.AccountInterface = account.NewAccount(accountNo, b.BankID, initialPayment)
 	b.Accounts = append(b.Accounts, newAccount)
 	return newAccount, nil
 }
 
-func (b *Bank) GetAccountByID(accountNo int) (account.AccountFunctions, error) {
+func (b *Bank) GetAccountByID(accountNo int) (account.AccountInterface, error) {
 	for _, acc := range b.Accounts {
 		if acc.GetAccountNumber() == accountNo {
 			return acc, nil

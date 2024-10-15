@@ -12,7 +12,7 @@ type Admin interface {
 	GetUsers() error
 	UpdateUsers(userID int, parameter string, newValue interface{}) error
 	DeleteUsers(userID int) error
-	NewBank(fullName, abbreviation string) (bank.BankFunctions, error)
+	NewBank(fullName, abbreviation string) (bank.BankInterface, error)
 	GetBanks() error
 	UpdateBank(bankID int, parameter string, newValue string) error
 	DeleteBank(bankID int) error
@@ -38,7 +38,7 @@ type User struct {
 	LastName  string
 	IsAdmin   bool
 	IsActive  bool
-	Accounts  []account.AccountFunctions
+	Accounts  []account.AccountInterface
 }
 
 // Error messages
@@ -80,7 +80,7 @@ func findUserID() int {
 	return AllUsers[len(AllUsers)-1].UserID + 1
 }
 
-func (c *User) findAccount(accountNo, bankID int) account.AccountFunctions {
+func (c *User) findAccount(accountNo, bankID int) account.AccountInterface {
 	for _, acc := range c.Accounts {
 		if acc.GetAccountNumber() == accountNo && acc.GetBankID() == bankID && acc.GetActivityStatus() {
 			return acc
@@ -128,17 +128,17 @@ func (c *User) NewUser(firstName, lastName string) (*User, error) {
 		LastName:  lastName,
 		IsAdmin:   false,
 		IsActive:  true,
-		Accounts:  []account.AccountFunctions{},
+		Accounts:  []account.AccountInterface{},
 	}
 	AllUsers = append(AllUsers, tempCust)
 	return tempCust, nil
 }
 
-func (c *User) NewBank(fullName, abbreviation string) (bank.BankFunctions, error) {
+func (c *User) NewBank(fullName, abbreviation string) (bank.BankInterface, error) {
 	if err := c.checkAdminAccess(); err != nil {
 		return nil, err
 	}
-	var bank1 bank.BankFunctions
+	var bank1 bank.BankInterface
 	bank1, _ = bank.NewBank(fullName, abbreviation)
 	return bank1, nil
 }
@@ -363,8 +363,8 @@ func (c *User) TransferFunds(fromAccountID, fromBankID, toAccountID, toBankID in
 	if err := c.checkUserAccess(); err != nil {
 		return err
 	}
-	var fromAcc account.AccountFunctions
-	var toAcc account.AccountFunctions
+	var fromAcc account.AccountInterface
+	var toAcc account.AccountInterface
 
 	for _, acc := range c.Accounts {
 		if acc.GetAccountNumber() == fromAccountID && acc.GetBankID() == fromBankID {

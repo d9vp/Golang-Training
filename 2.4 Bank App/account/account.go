@@ -8,12 +8,12 @@ import (
 	"strings"
 )
 
-type AccountFunctions interface {
+type AccountInterface interface {
 	RemoveAccount()
 	GetPassbook()
 	Deposit(amount float64, ids ...string) error
 	Withdraw(amount float64, ids ...string) error
-	Transfer(toAccount AccountFunctions, amount float64) error
+	Transfer(toAccount AccountInterface, amount float64) error
 	GetAccountNumber() int
 	GetBankID() int
 	GetActivityStatus() bool
@@ -82,7 +82,7 @@ func (a *Account) Withdraw(amount float64, ids ...string) error {
 	return nil
 }
 
-func (a *Account) Transfer(toAccount AccountFunctions, amount float64) error {
+func (a *Account) Transfer(toAccount AccountInterface, amount float64) error {
 	if err := a.Withdraw(amount, strconv.Itoa(toAccount.GetBankID()), strconv.Itoa(toAccount.GetAccountNumber())); err != nil {
 		return err
 	}
