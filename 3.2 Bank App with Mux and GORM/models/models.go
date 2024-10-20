@@ -14,6 +14,7 @@ var DB *gorm.DB
 
 type User struct {
 	UserID    int        `gorm:"primaryKey;autoIncrement" json:"userId"`
+	UserName  string     `gorm:"not null" json:"userName"`
 	FirstName string     `gorm:"not null" json:"firstName"`
 	LastName  string     `gorm:"not null" json:"lastName"`
 	IsAdmin   bool       `gorm:"default:false" json:"isAdmin"`
@@ -39,15 +40,15 @@ type LedgerData struct {
 }
 
 type Account struct {
-	ID       int            `gorm:"primaryKey;autoIncrement" json:"id"`
-	UserID   int            `gorm:"not null" json:"userId"` // Foreign key to the User table
-	BankID   int            `gorm:"not null" json:"bankId"` // Foreign key to the Bank table
-	Balance  float64        `gorm:"not null;default:1000" json:"balance"`
-	IsActive bool           `gorm:"not null;default:true" json:"isActive"`
-	Passbook []*Transaction `gorm:"foreignKey:AccountID;references:ID" json:"passbook"` // One-to-Many relationship with Transaction
+	ID       int                 `gorm:"primaryKey;autoIncrement" json:"id"`
+	UserID   int                 `gorm:"not null" json:"userId"` // Foreign key to the User table
+	BankID   int                 `gorm:"not null" json:"bankId"` // Foreign key to the Bank table
+	Balance  float64             `gorm:"not null;default:1000" json:"balance"`
+	IsActive bool                `gorm:"not null;default:true" json:"isActive"`
+	Passbook []*TransactionEntry `gorm:"foreignKey:AccountID;references:ID" json:"passbook"` // One-to-Many relationship with Transaction
 }
 
-type Transaction struct {
+type TransactionEntry struct {
 	ID                      int       `gorm:"primaryKey;autoIncrement" json:"id"`
 	Type                    string    `json:"type"` // e.g., "deposit", "withdrawal", "transfer"
 	Amount                  float64   `json:"amount"`
@@ -67,7 +68,7 @@ func InitDB() {
 		log.Fatalf("Failed to connect to database: %v", err)
 	}
 
-	err = DB.AutoMigrate(&User{}, &Bank{}, &LedgerData{}, &Account{}, &Transaction{})
+	err = DB.AutoMigrate(&User{}, &Bank{}, &LedgerData{}, &Account{}, &TransactionEntry{})
 	if err != nil {
 		log.Fatalf("Failed to migrate database schema: %v", err)
 	}
@@ -93,7 +94,7 @@ func SetupDatabase() {
 		log.Fatalf("Failed to connect to database: %v", err)
 	}
 
-	err = DB.AutoMigrate(&User{}, &Bank{}, &LedgerData{}, &Account{}, &Transaction{})
+	err = DB.AutoMigrate(&User{}, &Bank{}, &LedgerData{}, &Account{}, &TransactionEntry{})
 	if err != nil {
 		log.Fatalf("Failed to migrate database schema: %v", err)
 	}
@@ -106,6 +107,7 @@ func AddSuperAdmin() {
 		UserID:    0,
 		FirstName: "Super",
 		LastName:  "Admin",
+		UserName:  "SuperAdmin",
 		IsAdmin:   true,
 		IsActive:  true,
 		Password:  "password",
@@ -124,7 +126,7 @@ func ClearDatabase() {
 		log.Fatalf("failed to connect to database: %v", err)
 	}
 
-	if err := db.Migrator().DropTable(&User{}, &Bank{}, &Account{}, &Transaction{}, &LedgerData{}); err != nil {
+	if err := db.Migrator().DropTable(&User{}, &Bank{}, &Account{}, &TransactionEntry{}, &LedgerData{}); err != nil {
 		log.Fatalf("failed to drop tables: %v", err)
 	}
 

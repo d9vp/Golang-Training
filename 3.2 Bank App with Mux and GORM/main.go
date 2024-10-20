@@ -11,19 +11,17 @@ import (
 	"user/components/user/service"
 	"user/middleware"
 
-	"user/models" // Make sure to import your models package for DB initialization
+	"user/models"
 
 	"github.com/gorilla/mux"
 )
 
 func main() {
 	models.ClearDatabase()
-	// Initialize the database connection
-	models.InitDB() // or models.SetupDatabase() based on your preference
+	models.InitDB()
 
-	// Create a new router
 	router := mux.NewRouter()
-	router.HandleFunc("/login", login).Methods(http.MethodPost)
+	router.HandleFunc("/banking/login", login).Methods(http.MethodPost)
 
 	adminRoutes := router.PathPrefix("/banking/admin").Subrouter()
 	adminRoutes.Use(middleware.TokenAuthorization)
@@ -32,9 +30,9 @@ func main() {
 	adminRoutes.HandleFunc("", userController.NewAdminHandler).Methods("POST")
 	adminRoutes.HandleFunc("/users", userController.NewUserHandler).Methods("POST")
 	adminRoutes.HandleFunc("/users", userController.GetUsersHandler).Methods("GET")
-	adminRoutes.HandleFunc("/users/{id}", userController.GetUserByIDHandler).Methods("GET")
-	adminRoutes.HandleFunc("/users/{id}", userController.UpdateUserHandler).Methods("PUT")
-	adminRoutes.HandleFunc("/users/{id}", userController.DeleteUserHandler).Methods("DELETE")
+	adminRoutes.HandleFunc("/users/{userName}", userController.GetUserByIDHandler).Methods("GET")
+	adminRoutes.HandleFunc("/users/{userName}", userController.UpdateUserHandler).Methods("PUT")
+	adminRoutes.HandleFunc("/users/{userName}", userController.DeleteUserHandler).Methods("DELETE")
 
 	adminRoutes.HandleFunc("/banks", bankController.NewBankHandler).Methods("POST")
 	adminRoutes.HandleFunc("/banks", bankController.GetBanksHandler).Methods("GET")
@@ -44,7 +42,7 @@ func main() {
 	adminRoutes.HandleFunc("/banks/ledger/{id}", bankController.AddToLedger).Methods("PUT")
 	adminRoutes.HandleFunc("/banks/ledger/{id}", bankController.GetLedger).Methods("GET")
 
-	customerRoutes := router.PathPrefix("/banking/customer/{id}/accounts").Subrouter()
+	customerRoutes := router.PathPrefix("/banking/customer/{userName}/accounts").Subrouter()
 
 	customerRoutes.Use(middleware.TokenAuthorization)
 	customerRoutes.Use(middleware.VerifyCustomer)
@@ -54,10 +52,10 @@ func main() {
 	customerRoutes.HandleFunc("", userController.GetAccountsHandler).Methods("GET")
 	customerRoutes.HandleFunc("/total-balance", userController.GetTotalBalance).Methods("GET")
 	customerRoutes.HandleFunc("/{accId}", userController.DeleteAccountHandler).Methods("DELETE")
-	customerRoutes.HandleFunc("/{accId}", userController.GetAccountPassbook).Methods("GET")
-	customerRoutes.HandleFunc("/deposit/{accId}", userController.Deposit).Methods("PUT")
-	customerRoutes.HandleFunc("/withdraw/{accId}", userController.Withdraw).Methods("PUT")
-	customerRoutes.HandleFunc("/transfer/{accId}", userController.Transfer).Methods("PUT")
+	customerRoutes.HandleFunc("/{accId}", userController.GetAccountPassbookHandler).Methods("GET")
+	customerRoutes.HandleFunc("/deposit/{accId}", userController.DepositHandler).Methods("PUT")
+	customerRoutes.HandleFunc("/withdraw/{accId}", userController.WithdrawHandler).Methods("PUT")
+	customerRoutes.HandleFunc("/transfer/{accId}", userController.TransferHandler).Methods("PUT")
 
 	log.Println("Server is running on :4000")
 	log.Fatal(http.ListenAndServe(":4000", router))
@@ -74,9 +72,8 @@ func login(w http.ResponseWriter, r *http.Request) {
 
 	users, _ := service.GetAllUsers()
 	for _, u := range users {
-		if u.UserID == user.UserID && u.Password == user.Password {
-			// Create a JWT token
-			claim := middleware.NewClaims(user.UserID, user.Password, time.Now().Add(time.Hour*200))
+		if u.UserName == user.UserName && u.Password == user.Password {
+			claim := middleware.NewClaims(user.UserName, user.Password, time.Now().Add(time.Hour*200))
 			token, err := claim.Signing() // Capture the error here
 			if err != nil {
 				w.WriteHeader(http.StatusInternalServerError)

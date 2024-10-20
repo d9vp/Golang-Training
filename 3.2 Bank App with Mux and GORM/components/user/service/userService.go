@@ -11,39 +11,50 @@ import (
 var (
 	errNoUserFound  = errors.New("no such user found")
 	errEmptyString  = errors.New("empty string cannot be used as a parameter")
-	errUserExists   = errors.New("user already exists")
+	errUserExists   = errors.New("user name already in use")
 	errInvalidParam = errors.New("invalid parameter entered")
 )
 
-// Find a user by ID
-func findUserByID(userID int) (*models.User, error) {
+// Find a user by username and preload accounts
+func findUserByUserName(userName string) (*models.User, error) {
 	var user models.User
-	if err := models.DB.First(&user, "user_id = ?", userID).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, errNoUserFound
+	// Use a transaction
+	err := models.DB.Transaction(func(tx *gorm.DB) error {
+		// Preload Accounts when finding the user
+		if err := tx.Preload("Accounts").First(&user, "user_name = ?", userName).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return errNoUserFound
+			}
+			return err
 		}
+		return nil
+	})
+	if err != nil {
 		return nil, err
 	}
 	return &user, nil
 }
 
-// Get all users
+// Get all active users and preload their accounts
 func GetAllUsers() ([]*models.User, error) {
 	var users []*models.User
-	if err := models.DB.Where("is_active = ?", true).Find(&users).Error; err != nil {
+	err := models.DB.Transaction(func(tx *gorm.DB) error {
+		// Preload Accounts for all active users
+		if err := tx.Where("is_active = ?", true).Preload("Accounts").Find(&users).Error; err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
 		return nil, err
 	}
 	return users, nil
 }
 
 // Create a new Admin user
-func NewAdmin(firstName, lastName, password string) (*models.User, error) {
-	if firstName == "" || lastName == "" || password == "" {
-		return nil, errEmptyString
-	}
-
+func NewAdmin(firstName, lastName, userName, password string) (*models.User, error) {
 	// Check if user exists already
-	existingUser, _ := findUserByName(firstName, lastName)
+	existingUser, _ := findUserByUserName(userName)
 	if existingUser != nil {
 		return nil, errUserExists
 	}
@@ -52,13 +63,20 @@ func NewAdmin(firstName, lastName, password string) (*models.User, error) {
 		UserID:    0, // Auto-incremented by GORM
 		FirstName: firstName,
 		LastName:  lastName,
+		UserName:  userName,
 		IsAdmin:   true,
 		IsActive:  true,
 		Password:  password,
 		Accounts:  []*models.Account{},
 	}
 
-	if err := models.DB.Create(newUser).Error; err != nil {
+	err := models.DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Create(newUser).Error; err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
 		return nil, err
 	}
 	log.Printf("Admin created with ID %d", newUser.UserID)
@@ -66,13 +84,9 @@ func NewAdmin(firstName, lastName, password string) (*models.User, error) {
 }
 
 // Create a new regular user
-func NewUser(firstName, lastName, password string) (*models.User, error) {
-	if firstName == "" || lastName == "" || password == "" {
-		return nil, errEmptyString
-	}
-
+func NewUser(firstName, lastName, userName, password string) (*models.User, error) {
 	// Check if user exists already
-	existingUser, _ := findUserByName(firstName, lastName)
+	existingUser, _ := findUserByUserName(userName)
 	if existingUser != nil {
 		return nil, errUserExists
 	}
@@ -81,92 +95,107 @@ func NewUser(firstName, lastName, password string) (*models.User, error) {
 		UserID:    0, // Auto-incremented by GORM
 		FirstName: firstName,
 		LastName:  lastName,
+		UserName:  userName,
 		IsAdmin:   false,
 		IsActive:  true,
 		Password:  password,
 		Accounts:  []*models.Account{},
 	}
 
-	if err := models.DB.Create(newUser).Error; err != nil {
+	err := models.DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Create(newUser).Error; err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
 		return nil, err
 	}
 	log.Printf("User created with ID %d", newUser.UserID)
 	return newUser, nil
 }
 
-// Get all active users
-func GetUsers() ([]*models.User, error) {
-	var users []*models.User
-	if err := models.DB.Where("is_active = ?", true).Find(&users).Error; err != nil {
+// Get user accounts and preload their transaction history (Passbook)
+func GetAccountsForUser(u *models.User) ([]*models.Account, error) {
+	var accounts []*models.Account
+	err := models.DB.Transaction(func(tx *gorm.DB) error {
+		// Preload transaction history for each account (Passbook)
+		if err := tx.Model(u).Preload("Accounts.Passbook").Association("Accounts").Find(&accounts); err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
 		return nil, err
 	}
-	return users, nil
-}
-
-func GetAccountsForUser(u *models.User) []*models.Account {
-	return u.Accounts
+	return accounts, nil
 }
 
 // Update user details
-func UpdateUsers(userID int, parameter string, newValue interface{}) error {
-	user, err := findUserByID(userID)
+func UpdateUsers(userName, parameter string, newValue interface{}) error {
+	user, err := findUserByUserName(userName)
 	if err != nil {
 		return err
 	}
 
-	switch parameter {
-	case "First Name":
-		if value, ok := newValue.(string); ok && value != "" {
-			user.FirstName = value
-		} else {
-			return errEmptyString
+	// Update the user in a transaction
+	err = models.DB.Transaction(func(tx *gorm.DB) error {
+		switch parameter {
+		case "First Name":
+			if value, ok := newValue.(string); ok && value != "" {
+				user.FirstName = value
+			} else {
+				return errEmptyString
+			}
+		case "Last Name":
+			if value, ok := newValue.(string); ok && value != "" {
+				user.LastName = value
+			} else {
+				return errEmptyString
+			}
+		case "Password":
+			if value, ok := newValue.(string); ok && value != "" {
+				user.Password = value
+			} else {
+				return errEmptyString
+			}
+		case "Admin Rights":
+			if value, ok := newValue.(bool); ok {
+				user.IsAdmin = value
+			}
+		default:
+			return errInvalidParam
 		}
-	case "Last Name":
-		if value, ok := newValue.(string); ok && value != "" {
-			user.LastName = value
-		} else {
-			return errEmptyString
-		}
-	case "Password":
-		if value, ok := newValue.(string); ok && value != "" {
-			user.Password = value
-		} else {
-			return errEmptyString
-		}
-	case "Admin Rights":
-		if value, ok := newValue.(bool); ok {
-			user.IsAdmin = value
-		}
-	default:
-		return errInvalidParam
-	}
 
-	// Save changes
-	if err := models.DB.Save(&user).Error; err != nil {
+		// Save changes
+		if err := tx.Save(&user).Error; err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
 		return err
 	}
 	return nil
 }
 
 // Soft-delete a user (set IsActive to false)
-func DeleteUsers(userID int) error {
-	user, err := findUserByID(userID)
+func DeleteUsers(userName string) error {
+	user, err := findUserByUserName(userName)
 	if err != nil {
 		return err
 	}
 
-	user.IsActive = false
-	if err := models.DB.Save(&user).Error; err != nil {
+	// Soft delete using a transaction
+	err = models.DB.Transaction(func(tx *gorm.DB) error {
+		user.IsActive = false
+		if err := tx.Save(&user).Error; err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
 		return err
 	}
 	return nil
-}
-
-// Helper function to find user by name
-func findUserByName(firstName, lastName string) (*models.User, error) {
-	var user models.User
-	if err := models.DB.First(&user, "first_name = ? AND last_name = ?", firstName, lastName).Error; err != nil {
-		return nil, errNoUserFound
-	}
-	return &user, nil
 }

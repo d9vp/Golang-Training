@@ -7,9 +7,9 @@ import (
 	"gorm.io/gorm"
 )
 
-// NewTransaction creates a new Transaction instance.
-func NewTransaction(tranType string, amount, newBalance float64, bankIDOfCorr, accountIDOfCorr int) *models.Transaction {
-	return &models.Transaction{
+// NewTransactionEntry creates a new TransactionEntry instance.
+func NewTransactionEntry(tranType string, amount, newBalance float64, bankIDOfCorr, accountIDOfCorr int) *models.TransactionEntry {
+	return &models.TransactionEntry{
 		Type:                    tranType,
 		Amount:                  amount,
 		BalanceAfterTransaction: newBalance,
@@ -19,16 +19,22 @@ func NewTransaction(tranType string, amount, newBalance float64, bankIDOfCorr, a
 	}
 }
 
-// CreateTransaction saves a transaction to the database.
-func CreateTransaction(db *gorm.DB, transaction *models.Transaction) error {
-	return db.Create(transaction).Error
+// CreateTransaction saves a new transaction to the database.
+func CreateTransaction(db *gorm.DB, transaction *models.TransactionEntry) error {
+	return db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Create(transaction).Error; err != nil {
+			return err
+		}
+		return nil
+	})
 }
 
-// GetTransaction retrieves a transaction by ID.
-func GetTransaction(db *gorm.DB, id int) (*models.Transaction, error) {
-	var transaction models.Transaction
+// GetTransaction retrieves a transaction by its ID.
+func GetTransaction(db *gorm.DB, id int) (*models.TransactionEntry, error) {
+	var transaction models.TransactionEntry
 	err := db.First(&transaction, id).Error
-	return &transaction, err
+	if err != nil {
+		return nil, err
+	}
+	return &transaction, nil
 }
-
-// Other CRUD functions can be added here as needed

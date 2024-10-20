@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"net/http"
-	"strconv"
 	"time"
 	"user/components/user/service"
 	"user/models"
@@ -16,14 +15,14 @@ import (
 var secretKey = []byte("it'sDevthedev")
 
 type Claims struct {
-	UserID   int    `json:"userId"`
+	UserName string `json:"userName"`
 	Password string `json:"password"`
 	jwt.StandardClaims
 }
 
-func NewClaims(userID int, password string, expirationDate time.Time) *Claims {
+func NewClaims(userName string, password string, expirationDate time.Time) *Claims {
 	return &Claims{
-		UserID:   userID,
+		UserName: userName,
 		Password: password,
 		StandardClaims: jwt.StandardClaims{
 			ExpiresAt: expirationDate.Unix(),
@@ -72,7 +71,7 @@ func checkUserExistence(claims *Claims) (*models.User, error) {
 		return nil, err
 	}
 	for _, user := range users {
-		if user.UserID == claims.UserID && user.Password == claims.Password && user.IsActive {
+		if user.UserName == claims.UserName && user.Password == claims.Password && user.IsActive {
 			return user, nil
 		}
 	}
@@ -115,12 +114,12 @@ func VerifyCustomerFunctions(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		claims := r.Context().Value("claims").(*Claims)
 		vars := mux.Vars(r)
-		userID, err := strconv.Atoi(vars["id"])
-		if err != nil {
-			http.Error(w, "Bad request: user ID must be an integer", http.StatusBadRequest)
+		userName := vars["userName"]
+		if userName == "" {
+			http.Error(w, "Bad request: user name cannot be empty", http.StatusBadRequest)
 			return
 		}
-		if claims.UserID != userID {
+		if claims.UserName != userName {
 			http.Error(w, "Unauthorized: can only CRUD own accounts", http.StatusUnauthorized)
 			return
 		}

@@ -23,6 +23,8 @@ func NewBankHandler(w http.ResponseWriter, r *http.Request) {
 	bank := &models.Bank{
 		FullName:     req.FullName,
 		Abbreviation: req.Abbreviation,
+		Accounts:     []*models.Account{},
+		LedgerData:   []*models.LedgerData{},
 	}
 
 	bank, err := service.CreateBank(bank)
