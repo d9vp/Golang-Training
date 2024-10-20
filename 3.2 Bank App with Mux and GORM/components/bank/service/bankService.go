@@ -7,7 +7,6 @@ import (
 	"gorm.io/gorm"
 )
 
-// Error messages
 var (
 	errBankNotFound     = errors.New("bank not found")
 	errInvalidBankName  = errors.New("invalid bank name or abbreviation")
@@ -15,7 +14,6 @@ var (
 	errInvalidParameter = errors.New("invalid parameter for update")
 )
 
-// Get all banks from the database using a transaction
 func GetAllBanks() ([]*models.Bank, error) {
 	var banks []*models.Bank
 	err := models.DB.Transaction(func(tx *gorm.DB) error {
@@ -30,7 +28,6 @@ func GetAllBanks() ([]*models.Bank, error) {
 	return banks, nil
 }
 
-// Get a specific bank by ID using a transaction
 func GetBankByID(id int) (*models.Bank, error) {
 	var bank models.Bank
 	err := models.DB.Transaction(func(tx *gorm.DB) error {
@@ -48,7 +45,6 @@ func GetBankByID(id int) (*models.Bank, error) {
 	return &bank, nil
 }
 
-// Create a new bank using a transaction
 func CreateBank(bank *models.Bank) (*models.Bank, error) {
 	if bank.FullName == "" || bank.Abbreviation == "" {
 		return nil, errInvalidBankName
@@ -67,7 +63,6 @@ func CreateBank(bank *models.Bank) (*models.Bank, error) {
 	return bank, nil
 }
 
-// Update bank information using a transaction
 func UpdateBank(id int, parameter string, newValue string) error {
 	err := models.DB.Transaction(func(tx *gorm.DB) error {
 		var bank models.Bank
@@ -106,7 +101,6 @@ func UpdateBank(id int, parameter string, newValue string) error {
 	return nil
 }
 
-// Remove (soft-delete) a bank using a transaction
 func RemoveBank(bankID int) error {
 	err := models.DB.Transaction(func(tx *gorm.DB) error {
 		var bank models.Bank
@@ -123,13 +117,6 @@ func RemoveBank(bankID int) error {
 
 		bank.IsActive = false
 
-		// Soft-delete associated accounts (if needed, uncomment the next lines)
-		// for _, account := range bank.Accounts {
-		// 	if err := service.DeleteAccount(account); err != nil {
-		// 		return err
-		// 	}
-		// }
-
 		if err := tx.Save(&bank).Error; err != nil {
 			return err
 		}
@@ -141,7 +128,6 @@ func RemoveBank(bankID int) error {
 	return nil
 }
 
-// Add an account to a bank using a transaction
 func AddAccountToBank(bankID int, account *models.Account) error {
 	err := models.DB.Transaction(func(tx *gorm.DB) error {
 		var bank models.Bank
@@ -158,7 +144,6 @@ func AddAccountToBank(bankID int, account *models.Account) error {
 
 		bank.Accounts = append(bank.Accounts, account)
 
-		// Update the user to persist the new account association
 		if err := tx.Save(bank).Error; err != nil {
 			return errors.New("failed to update bank with new account")
 		}

@@ -20,47 +20,48 @@ type User struct {
 	IsAdmin   bool       `gorm:"default:false" json:"isAdmin"`
 	IsActive  bool       `gorm:"default:true" json:"isActive"`
 	Password  string     `gorm:"not null" json:"-"`
-	Accounts  []*Account `gorm:"foreignKey:UserID;references:UserID" json:"accounts"` // One-to-Many relationship with Account
+	Accounts  []*Account `gorm:"foreignKey:UserID;references:UserID" json:"accounts"`
 }
 
 type Bank struct {
 	ID           int           `gorm:"primaryKey;autoIncrement" json:"id"`
 	FullName     string        `gorm:"not null" json:"fullName"`
-	Abbreviation string        `gorm:"size:5;not null" json:"abbreviation"` // Limit abbreviation to 5 characters
+	Abbreviation string        `gorm:"size:5;not null" json:"abbreviation"`
 	IsActive     bool          `gorm:"default:true" json:"isActive"`
-	Accounts     []*Account    `gorm:"foreignKey:BankID;references:ID" json:"accounts"`   // One-to-Many relationship with Account
-	LedgerData   []*LedgerData `gorm:"foreignKey:BankID;references:ID" json:"ledgerData"` // One-to-Many relationship with LedgerData
+	Accounts     []*Account    `gorm:"foreignKey:BankID;references:ID" json:"accounts"`
+	LedgerData   []*LedgerData `gorm:"foreignKey:BankID;references:ID" json:"ledgerData"`
 }
 
 type LedgerData struct {
 	ID                  int     `gorm:"primaryKey;autoIncrement" json:"id"`
-	BankID              int     `gorm:"not null" json:"bankId"`              // Foreign key to the Bank table
-	CorrespondingBankID int     `gorm:"not null" json:"correspondingBankId"` // Bank to which this entry relates
-	Amount              float64 `gorm:"not null" json:"amount"`              // Transaction amount
+	BankID              int     `gorm:"not null" json:"bankId"`
+	CorrespondingBankID int     `gorm:"not null" json:"correspondingBankId"`
+	Amount              float64 `gorm:"not null" json:"amount"`
 }
 
 type Account struct {
 	ID       int                 `gorm:"primaryKey;autoIncrement" json:"id"`
-	UserID   int                 `gorm:"not null" json:"userId"` // Foreign key to the User table
-	BankID   int                 `gorm:"not null" json:"bankId"` // Foreign key to the Bank table
+	UserID   int                 `gorm:"not null" json:"userId"`
+	BankID   int                 `gorm:"not null" json:"bankId"`
 	Balance  float64             `gorm:"not null;default:1000" json:"balance"`
 	IsActive bool                `gorm:"not null;default:true" json:"isActive"`
-	Passbook []*TransactionEntry `gorm:"foreignKey:AccountID;references:ID" json:"passbook"` // One-to-Many relationship with Transaction
+	Passbook []*TransactionEntry `gorm:"foreignKey:AccountID;references:ID" json:"passbook"`
 }
 
 type TransactionEntry struct {
 	ID                      int       `gorm:"primaryKey;autoIncrement" json:"id"`
-	Type                    string    `json:"type"` // e.g., "deposit", "withdrawal", "transfer"
+	Type                    string    `json:"type"`
 	Amount                  float64   `json:"amount"`
 	BalanceAfterTransaction float64   `json:"balanceAfterTransaction"`
-	CorrespondingBankID     int       `json:"correspondingBankId"`    // Bank ID associated with this transaction
-	CorrespondingAccountID  int       `json:"correspondingAccountId"` // Account ID associated with this transaction
+	CorrespondingBankID     int       `json:"correspondingBankId"`
+	CorrespondingAccountID  int       `json:"correspondingAccountId"`
 	Timestamp               time.Time `gorm:"autoCreateTime" json:"timestamp"`
-	AccountID               int       `gorm:"not null" json:"accountId"` // Foreign key to Account
+	AccountID               int       `gorm:"not null" json:"accountId"`
 }
 
 func InitDB() {
-	dsn := "root:Bank1mbha!Bank1mbha!@tcp(127.0.0.1:3306)/GoBankingApp?charset=utf8mb4&parseTime=True&loc=Local"
+
+	dsn := "root:{password}@tcp(127.0.0.1:3306)/GoBankingApp?charset=utf8mb4&parseTime=True&loc=Local"
 
 	var err error
 	DB, err = gorm.Open(mysql.Open(dsn), &gorm.Config{})
@@ -120,7 +121,7 @@ func AddSuperAdmin() {
 }
 
 func ClearDatabase() {
-	dsn := "root:Bank1mbha!Bank1mbha!@tcp(127.0.0.1:3306)/GoBankingApp?charset=utf8mb4&parseTime=True&loc=Local" // Adjust accordingly
+	dsn := "root:{password}@tcp(127.0.0.1:3306)/GoBankingApp?charset=utf8mb4&parseTime=True&loc=Local"
 	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
 	if err != nil {
 		log.Fatalf("failed to connect to database: %v", err)

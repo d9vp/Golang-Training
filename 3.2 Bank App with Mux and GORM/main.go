@@ -74,7 +74,7 @@ func login(w http.ResponseWriter, r *http.Request) {
 	for _, u := range users {
 		if u.UserName == user.UserName && u.Password == user.Password {
 			claim := middleware.NewClaims(user.UserName, user.Password, time.Now().Add(time.Hour*200))
-			token, err := claim.Signing() // Capture the error here
+			token, err := claim.Signing()
 			if err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
 				json.NewEncoder(w).Encode(map[string]string{"error": "Could not generate token"})

@@ -13,7 +13,6 @@ import (
 	"github.com/gorilla/mux"
 )
 
-// Utility function to get user by ID
 func getUserByUserName(userName string) (*models.User, error) {
 
 	users, err := service.GetAllUsers()
@@ -29,7 +28,6 @@ func getUserByUserName(userName string) (*models.User, error) {
 	return nil, fmt.Errorf("user not found")
 }
 
-// Admin Handler - Create a new admin
 func NewAdminHandler(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		FirstName string `json:"firstName"`
@@ -57,7 +55,6 @@ func NewAdminHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(user)
 }
 
-// User Handler - Create a new user
 func NewUserHandler(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		FirstName string `json:"firstName"`
@@ -85,7 +82,6 @@ func NewUserHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(user)
 }
 
-// Get All Users Handler
 func GetUsersHandler(w http.ResponseWriter, r *http.Request) {
 	users, err := service.GetAllUsers()
 	if err != nil {
@@ -111,7 +107,6 @@ func GetUserByIDHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-// Update User Handler
 func UpdateUserHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	userName := vars["userName"]
@@ -141,7 +136,6 @@ func UpdateUserHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-// Delete User Handler
 func DeleteUserHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	userName := vars["userName"]
@@ -161,19 +155,16 @@ func DeleteUserHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// New Account Handler - Create a new account for user
 func NewAccountHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	userName := vars["userName"]
 
-	// Get user by ID
 	user, err := getUserByUserName(userName)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	// Decode request payload
 	var req struct {
 		BankID  int     `json:"bankId"`
 		Balance float64 `json:"balance"`
@@ -189,59 +180,49 @@ func NewAccountHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Create account
 	account, err := accService.CreateAccount(user, req.BankID, req.Balance)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	// Respond with the newly created account
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(account)
 }
 
-// Get Accounts Handler - Retrieve user accounts
 func GetAccountsHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	userName := vars["userName"]
 
-	// Fetch user by username and preload their accounts
 	user, err := accService.GetUserWithAccounts(userName)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	// Return user's accounts
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(user.Accounts)
 }
 
-// Get Total Balance - Retrieve total balance across all user accounts
 func GetTotalBalance(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	userName := vars["userName"]
 
-	// Fetch total balance from account service
 	totalBalance, err := accService.GetTotalBalanceForUser(userName)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	// Return the total balance
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string]float64{"Total Balance for user": totalBalance})
 }
 
-// DeleteAccountHandler - Deactivate an account by setting its status to inactive
 func DeleteAccountHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	userName := vars["userName"]
 	accountID, _ := strconv.Atoi(vars["accId"])
 
-	// Get user and preload their accounts
 	user, err := accService.GetUserWithAccounts(userName)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -254,7 +235,6 @@ func DeleteAccountHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Deactivate the account
 	if err := accService.DeleteAccount(account); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -264,7 +244,6 @@ func DeleteAccountHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]string{"message": "account deactivated successfully"})
 }
 
-// DepositHandler - Deposit money into an account
 func DepositHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	userName := vars["userName"]
@@ -274,13 +253,11 @@ func DepositHandler(w http.ResponseWriter, r *http.Request) {
 		Amount float64 `json:"amount"`
 	}
 
-	// Decode deposit amount from the request body
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "Invalid request payload", http.StatusBadRequest)
 		return
 	}
 
-	// Get user and preload their accounts
 	user, err := accService.GetUserWithAccounts(userName)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -293,7 +270,6 @@ func DepositHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Perform the deposit
 	if err := accService.Deposit(account, req.Amount); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -303,7 +279,6 @@ func DepositHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]string{"message": "deposit successful"})
 }
 
-// WithdrawHandler - Withdraw money from an account
 func WithdrawHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	userName := vars["userName"]
@@ -313,13 +288,11 @@ func WithdrawHandler(w http.ResponseWriter, r *http.Request) {
 		Amount float64 `json:"amount"`
 	}
 
-	// Decode withdrawal amount from the request body
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "Invalid request payload", http.StatusBadRequest)
 		return
 	}
 
-	// Get user and preload their accounts
 	user, err := accService.GetUserWithAccounts(userName)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -332,7 +305,6 @@ func WithdrawHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Perform the withdrawal
 	if err := accService.Withdraw(account, req.Amount); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -342,7 +314,6 @@ func WithdrawHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]string{"message": "withdrawal successful"})
 }
 
-// TransferHandler - Transfer money from one account to another
 func TransferHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	userName := vars["userName"]
@@ -352,7 +323,6 @@ func TransferHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Convert account ID from string to int
 	accountID := vars["accId"]
 	accIDint, err := strconv.Atoi(accountID)
 	if err != nil {
@@ -360,7 +330,6 @@ func TransferHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Decode request payload
 	var request struct {
 		FromBankID int     `json:"fromBankId"`
 		Amount     float64 `json:"amount"`
@@ -374,14 +343,12 @@ func TransferHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Fetch target user and preload their accounts
 	toUser, err := accService.GetUserWithAccounts(request.ToUserName)
 	if err != nil {
 		http.Error(w, "Invalid target user", http.StatusBadRequest)
 		return
 	}
 
-	// Get the sender and receiver accounts
 	account, err := accService.GetAccountByIDForTransfer(user, request.FromBankID, accIDint)
 	if err != nil {
 		http.Error(w, "No such account found for the user", http.StatusBadRequest)
@@ -394,24 +361,20 @@ func TransferHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Perform the transfer
 	if err := accService.Transfer(account, toAccount, request.Amount); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	// Respond with success
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string]string{"message": "Transfer successful"})
 }
 
-// GetAccountPassbookHandler - Retrieve transaction history for an account
 func GetAccountPassbookHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	userName := vars["userName"]
 	accountID, _ := strconv.Atoi(vars["accId"])
 
-	// Get user and preload their accounts
 	user, err := accService.GetUserWithAccounts(userName)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -424,14 +387,12 @@ func GetAccountPassbookHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Fetch passbook (transaction history)
 	passbook, err := accService.GetAccountPassbook(account.ID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	// Return passbook as JSON
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(passbook)
 }
