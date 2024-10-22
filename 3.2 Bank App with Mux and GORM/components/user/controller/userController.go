@@ -1,4 +1,4 @@
-package user
+package controller
 
 import (
 	"encoding/json"
@@ -13,15 +13,18 @@ import (
 	"github.com/gorilla/mux"
 )
 
-func getUserByUserName(userName string) (*models.User, error) {
-
+func GetUserByUserId(userId string) (*models.User, error) {
+	userIdint, err := strconv.Atoi(userId)
+	if err != nil {
+		return nil, err
+	}
 	users, err := service.GetAllUsers()
 	if err != nil {
 		return nil, err
 	}
 
 	for _, user := range users {
-		if user.UserName == userName {
+		if int(user.ID) == userIdint {
 			return user, nil
 		}
 	}
@@ -95,9 +98,9 @@ func GetUsersHandler(w http.ResponseWriter, r *http.Request) {
 
 func GetUserByIDHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	userName := vars["userName"]
+	userId := vars["id"]
 
-	user, err := getUserByUserName(userName)
+	user, err := GetUserByUserId(userId)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -109,9 +112,9 @@ func GetUserByIDHandler(w http.ResponseWriter, r *http.Request) {
 
 func UpdateUserHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	userName := vars["userName"]
+	userId := vars["id"]
 
-	_, err := getUserByUserName(userName)
+	user, err := GetUserByUserId(userId)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -127,7 +130,7 @@ func UpdateUserHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = service.UpdateUsers(userName, req.Parameter, req.NewValue)
+	err = service.UpdateUsers(user.UserName, req.Parameter, req.NewValue)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -138,15 +141,15 @@ func UpdateUserHandler(w http.ResponseWriter, r *http.Request) {
 
 func DeleteUserHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	userName := vars["userName"]
+	userId := vars["id"]
 
-	_, err := getUserByUserName(userName)
+	user, err := GetUserByUserId(userId)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	err = service.DeleteUsers(userName)
+	err = service.DeleteUsers(user.UserName)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -157,9 +160,9 @@ func DeleteUserHandler(w http.ResponseWriter, r *http.Request) {
 
 func NewAccountHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	userName := vars["userName"]
+	userId := vars["id"]
 
-	user, err := getUserByUserName(userName)
+	user, err := GetUserByUserId(userId)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -192,9 +195,9 @@ func NewAccountHandler(w http.ResponseWriter, r *http.Request) {
 
 func GetAccountsHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	userName := vars["userName"]
+	userId := vars["id"]
 
-	user, err := accService.GetUserWithAccounts(userName)
+	user, err := accService.GetUserWithAccounts(userId)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -206,9 +209,13 @@ func GetAccountsHandler(w http.ResponseWriter, r *http.Request) {
 
 func GetTotalBalance(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	userName := vars["userName"]
-
-	totalBalance, err := accService.GetTotalBalanceForUser(userName)
+	userId := vars["id"]
+	user, err := accService.GetUserWithAccounts(userId)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	totalBalance, err := accService.GetTotalBalanceForUser(user.UserName)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -220,10 +227,10 @@ func GetTotalBalance(w http.ResponseWriter, r *http.Request) {
 
 func DeleteAccountHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	userName := vars["userName"]
+	userId := vars["id"]
 	accountID, _ := strconv.Atoi(vars["accId"])
 
-	user, err := accService.GetUserWithAccounts(userName)
+	user, err := accService.GetUserWithAccounts(userId)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -246,7 +253,7 @@ func DeleteAccountHandler(w http.ResponseWriter, r *http.Request) {
 
 func DepositHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	userName := vars["userName"]
+	userId := vars["id"]
 	accountID, _ := strconv.Atoi(vars["accId"])
 
 	var req struct {
@@ -258,7 +265,7 @@ func DepositHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := accService.GetUserWithAccounts(userName)
+	user, err := accService.GetUserWithAccounts(userId)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -281,7 +288,7 @@ func DepositHandler(w http.ResponseWriter, r *http.Request) {
 
 func WithdrawHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	userName := vars["userName"]
+	userId := vars["id"]
 	accountID, _ := strconv.Atoi(vars["accId"])
 
 	var req struct {
@@ -293,7 +300,7 @@ func WithdrawHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := accService.GetUserWithAccounts(userName)
+	user, err := accService.GetUserWithAccounts(userId)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -316,8 +323,8 @@ func WithdrawHandler(w http.ResponseWriter, r *http.Request) {
 
 func TransferHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	userName := vars["userName"]
-	user, err := accService.GetUserWithAccounts(userName) // Fetch user with accounts
+	userId := vars["id"]
+	user, err := accService.GetUserWithAccounts(userId) // Fetch user with accounts
 	if err != nil {
 		http.Error(w, "Invalid user", http.StatusBadRequest)
 		return
@@ -372,10 +379,10 @@ func TransferHandler(w http.ResponseWriter, r *http.Request) {
 
 func GetAccountPassbookHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	userName := vars["userName"]
+	userId := vars["id"]
 	accountID, _ := strconv.Atoi(vars["accId"])
 
-	user, err := accService.GetUserWithAccounts(userName)
+	user, err := accService.GetUserWithAccounts(userId)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -387,7 +394,7 @@ func GetAccountPassbookHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	passbook, err := accService.GetAccountPassbook(account.ID)
+	passbook, err := accService.GetAccountPassbook(int(account.ID))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

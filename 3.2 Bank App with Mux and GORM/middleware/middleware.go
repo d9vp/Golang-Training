@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"time"
+	"user/components/user/controller"
 	"user/components/user/service"
 	"user/models"
 
@@ -114,12 +115,17 @@ func VerifyCustomerFunctions(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		claims := r.Context().Value("claims").(*Claims)
 		vars := mux.Vars(r)
-		userName := vars["userName"]
-		if userName == "" {
-			http.Error(w, "Bad request: user name cannot be empty", http.StatusBadRequest)
+		userId := vars["id"]
+		user, err := controller.GetUserByUserId(userId)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
-		if claims.UserName != userName {
+		if user == nil {
+			http.Error(w, "Bad Request: no such user found", http.StatusBadRequest)
+			return
+		}
+		if claims.UserName != user.UserName {
 			http.Error(w, "Unauthorized: can only CRUD own accounts", http.StatusUnauthorized)
 			return
 		}

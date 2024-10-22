@@ -2,7 +2,6 @@ package service
 
 import (
 	"errors"
-	"user/components/bank/service"
 	"user/models"
 
 	"gorm.io/gorm"
@@ -23,7 +22,7 @@ func CreateAccount(user *models.User, bankID int, balance float64) (*models.Acco
 
 	err := models.DB.Transaction(func(tx *gorm.DB) error {
 		newAccount = &models.Account{
-			UserID:   user.UserID,
+			UserID:   int(user.ID),
 			BankID:   bankID,
 			Balance:  balance,
 			IsActive: true,
@@ -45,10 +44,6 @@ func CreateAccount(user *models.User, bankID int, balance float64) (*models.Acco
 			return errors.New("failed to update user with new account")
 		}
 
-		if err := service.AddAccountToBank(bankID, newAccount); err != nil {
-			return err
-		}
-
 		return nil
 	})
 
@@ -62,7 +57,7 @@ func CreateAccount(user *models.User, bankID int, balance float64) (*models.Acco
 func GetAccountsForUser(user *models.User) ([]*models.Account, error) {
 	var accounts []*models.Account
 
-	if err := models.DB.Where("user_id = ?", user.UserID).Find(&accounts).Error; err != nil {
+	if err := models.DB.Where("user_id = ?", user.ID).Find(&accounts).Error; err != nil {
 		return nil, err
 	}
 
@@ -98,7 +93,7 @@ func GetUserWithAccounts(userName string) (*models.User, error) {
 
 func GetAccountByID(user *models.User, accountID int) (*models.Account, error) {
 	for _, account := range user.Accounts {
-		if account.ID == accountID {
+		if int(account.ID) == accountID {
 			if err := models.DB.Preload("Passbook").First(&account).Error; err != nil {
 				return nil, err
 			}
@@ -181,7 +176,7 @@ func Transfer(fromAccount, toAccount *models.Account, amount float64) error {
 
 func GetAccountByIDForTransfer(user *models.User, bankID, accountID int) (*models.Account, error) {
 	for _, acc := range user.Accounts {
-		if acc.ID == accountID && acc.BankID == bankID {
+		if int(acc.ID) == accountID && acc.BankID == bankID {
 			if err := models.DB.Preload("Passbook").First(&acc).Error; err != nil {
 				return nil, err
 			}

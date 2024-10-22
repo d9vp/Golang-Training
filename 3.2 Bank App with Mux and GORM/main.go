@@ -30,9 +30,9 @@ func main() {
 	adminRoutes.HandleFunc("", userController.NewAdminHandler).Methods("POST")
 	adminRoutes.HandleFunc("/users", userController.NewUserHandler).Methods("POST")
 	adminRoutes.HandleFunc("/users", userController.GetUsersHandler).Methods("GET")
-	adminRoutes.HandleFunc("/users/{userName}", userController.GetUserByIDHandler).Methods("GET")
-	adminRoutes.HandleFunc("/users/{userName}", userController.UpdateUserHandler).Methods("PUT")
-	adminRoutes.HandleFunc("/users/{userName}", userController.DeleteUserHandler).Methods("DELETE")
+	adminRoutes.HandleFunc("/users/{id}", userController.GetUserByIDHandler).Methods("GET")
+	adminRoutes.HandleFunc("/users/{id}", userController.UpdateUserHandler).Methods("PUT")
+	adminRoutes.HandleFunc("/users/{id}", userController.DeleteUserHandler).Methods("DELETE")
 
 	adminRoutes.HandleFunc("/banks", bankController.NewBankHandler).Methods("POST")
 	adminRoutes.HandleFunc("/banks", bankController.GetBanksHandler).Methods("GET")
@@ -42,7 +42,7 @@ func main() {
 	adminRoutes.HandleFunc("/banks/ledger/{id}", bankController.AddToLedger).Methods("PUT")
 	adminRoutes.HandleFunc("/banks/ledger/{id}", bankController.GetLedger).Methods("GET")
 
-	customerRoutes := router.PathPrefix("/banking/customer/{userName}/accounts").Subrouter()
+	customerRoutes := router.PathPrefix("/banking/customer/{id}/accounts").Subrouter()
 
 	customerRoutes.Use(middleware.TokenAuthorization)
 	customerRoutes.Use(middleware.VerifyCustomer)

@@ -13,18 +13,18 @@ import (
 var DB *gorm.DB
 
 type User struct {
-	UserID    int        `gorm:"primaryKey;autoIncrement" json:"userId"`
+	gorm.Model
 	UserName  string     `gorm:"not null" json:"userName"`
 	FirstName string     `gorm:"not null" json:"firstName"`
 	LastName  string     `gorm:"not null" json:"lastName"`
 	IsAdmin   bool       `gorm:"default:false" json:"isAdmin"`
 	IsActive  bool       `gorm:"default:true" json:"isActive"`
 	Password  string     `gorm:"not null" json:"-"`
-	Accounts  []*Account `gorm:"foreignKey:UserID;references:UserID" json:"accounts"`
+	Accounts  []*Account `gorm:"foreignKey:UserID;references:ID" json:"accounts"`
 }
 
 type Bank struct {
-	ID           int           `gorm:"primaryKey;autoIncrement" json:"id"`
+	gorm.Model
 	FullName     string        `gorm:"not null" json:"fullName"`
 	Abbreviation string        `gorm:"size:5;not null" json:"abbreviation"`
 	IsActive     bool          `gorm:"default:true" json:"isActive"`
@@ -33,14 +33,14 @@ type Bank struct {
 }
 
 type LedgerData struct {
-	ID                  int     `gorm:"primaryKey;autoIncrement" json:"id"`
+	gorm.Model
 	BankID              int     `gorm:"not null" json:"bankId"`
 	CorrespondingBankID int     `gorm:"not null" json:"correspondingBankId"`
 	Amount              float64 `gorm:"not null" json:"amount"`
 }
 
 type Account struct {
-	ID       int                 `gorm:"primaryKey;autoIncrement" json:"id"`
+	gorm.Model
 	UserID   int                 `gorm:"not null" json:"userId"`
 	BankID   int                 `gorm:"not null" json:"bankId"`
 	Balance  float64             `gorm:"not null;default:1000" json:"balance"`
@@ -49,7 +49,8 @@ type Account struct {
 }
 
 type TransactionEntry struct {
-	ID                      int       `gorm:"primaryKey;autoIncrement" json:"id"`
+	gorm.Model
+
 	Type                    string    `json:"type"`
 	Amount                  float64   `json:"amount"`
 	BalanceAfterTransaction float64   `json:"balanceAfterTransaction"`
@@ -60,7 +61,6 @@ type TransactionEntry struct {
 }
 
 func InitDB() {
-
 	dsn := "root:{password}@tcp(127.0.0.1:3306)/GoBankingApp?charset=utf8mb4&parseTime=True&loc=Local"
 
 	var err error
@@ -105,7 +105,6 @@ func SetupDatabase() {
 
 func AddSuperAdmin() {
 	superAdmin := &User{
-		UserID:    0,
 		FirstName: "Super",
 		LastName:  "Admin",
 		UserName:  "SuperAdmin",
@@ -121,7 +120,7 @@ func AddSuperAdmin() {
 }
 
 func ClearDatabase() {
-	dsn := "root:{password}@tcp(127.0.0.1:3306)/GoBankingApp?charset=utf8mb4&parseTime=True&loc=Local"
+	dsn := "root:{password}@tcp(127.0.0.1:3306)/GoBankingApp?charset=utf8mb4&parseTime=True&loc=Local" // Adjust accordingly
 	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
 	if err != nil {
 		log.Fatalf("failed to connect to database: %v", err)

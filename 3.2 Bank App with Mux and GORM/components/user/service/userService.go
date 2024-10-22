@@ -53,7 +53,6 @@ func NewAdmin(firstName, lastName, userName, password string) (*models.User, err
 	}
 
 	newUser := &models.User{
-		UserID:    0,
 		FirstName: firstName,
 		LastName:  lastName,
 		UserName:  userName,
@@ -72,7 +71,7 @@ func NewAdmin(firstName, lastName, userName, password string) (*models.User, err
 	if err != nil {
 		return nil, err
 	}
-	log.Printf("Admin created with ID %d", newUser.UserID)
+	log.Printf("Admin created with ID %d", newUser.ID)
 	return newUser, nil
 }
 
@@ -83,7 +82,6 @@ func NewUser(firstName, lastName, userName, password string) (*models.User, erro
 	}
 
 	newUser := &models.User{
-		UserID:    0,
 		FirstName: firstName,
 		LastName:  lastName,
 		UserName:  userName,
@@ -102,7 +100,7 @@ func NewUser(firstName, lastName, userName, password string) (*models.User, erro
 	if err != nil {
 		return nil, err
 	}
-	log.Printf("User created with ID %d", newUser.UserID)
+	log.Printf("User created with ID %d", newUser.ID)
 	return newUser, nil
 }
 
