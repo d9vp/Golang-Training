@@ -120,7 +120,7 @@ func AddSuperAdmin() {
 }
 
 func ClearDatabase() {
-	dsn := "root:{password}@tcp(127.0.0.1:3306)/GoBankingApp?charset=utf8mb4&parseTime=True&loc=Local" // Adjust accordingly
+	dsn := "root:{password}@tcp(127.0.0.1:3306)/GoBankingApp?charset=utf8mb4&parseTime=True&loc=Local"
 	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
 	if err != nil {
 		log.Fatalf("failed to connect to database: %v", err)

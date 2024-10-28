@@ -2,7 +2,6 @@ package service
 
 import (
 	"errors"
-	"user/components/transactions/service"
 )
 
 type Account struct {
@@ -10,7 +9,7 @@ type Account struct {
 	BankID   int     `json:"bankId"`
 	Balance  float64 `json:"balance"`
 	IsActive bool    `json:"isActive"`
-	Passbook []*service.Transaction
+	Passbook []*Transaction
 }
 
 var accounts []*Account
@@ -43,10 +42,10 @@ func CreateAccount(bankID int, balance float64) (*Account, error) {
 		BankID:   bankID,
 		Balance:  balance,
 		IsActive: true,
-		Passbook: []*service.Transaction{},
+		Passbook: []*Transaction{},
 	}
 
-	initialTransaction := service.NewTransaction(0, "Initial Deposit", balance, balance, -1, -1)
+	initialTransaction := NewTransaction(0, "Initial Deposit", balance, balance, -1, -1)
 	newAccount.Passbook = append(newAccount.Passbook, initialTransaction)
 
 	accounts = append(accounts, newAccount)
@@ -65,7 +64,7 @@ func Deposit(account *Account, amount float64) error {
 	}
 
 	account.Balance += amount
-	toTransaction := service.NewTransaction(len(account.Passbook)+1, "Credit", amount, account.Balance, -1, -1)
+	toTransaction := NewTransaction(len(account.Passbook)+1, "Credit", amount, account.Balance, -1, -1)
 	account.Passbook = append(account.Passbook, toTransaction)
 	return nil
 }
@@ -81,11 +80,11 @@ func Withdraw(account *Account, amount float64) error {
 	}
 
 	account.Balance -= amount
-	fromTransaction := service.NewTransaction(len(account.Passbook)+1, "Debit", amount, account.Balance, -1, -1)
+	fromTransaction := NewTransaction(len(account.Passbook)+1, "Debit", amount, account.Balance, -1, -1)
 	account.Passbook = append(account.Passbook, fromTransaction)
 	return nil
 }
 
-func GetAccountPassbook(a *Account) []*service.Transaction {
+func GetAccountPassbook(a *Account) []*Transaction {
 	return a.Passbook
 }

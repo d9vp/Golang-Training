@@ -20,7 +20,7 @@ func main() {
 	router.HandleFunc("/login", login).Methods(http.MethodPost)
 
 	adminRoutes := router.PathPrefix("/banking/admin").Subrouter()
-	adminRoutes.Use(middleware.TokenAuthorisation)
+	adminRoutes.Use(middleware.TokenAuthorization)
 	adminRoutes.Use(middleware.VerifyAdmin)
 
 	adminRoutes.HandleFunc("", userController.NewAdminHandler).Methods("POST")
@@ -40,7 +40,7 @@ func main() {
 
 	customerRoutes := router.PathPrefix("/banking/customer/{id}/accounts").Subrouter()
 
-	customerRoutes.Use(middleware.TokenAuthorisation)
+	customerRoutes.Use(middleware.TokenAuthorization)
 	customerRoutes.Use(middleware.VerifyCustomer)
 	customerRoutes.Use(middleware.VerifyCustomerFunctions)
 
@@ -71,7 +71,7 @@ func login(w http.ResponseWriter, r *http.Request) {
 		if u.UserID == user.UserID && u.Password == user.Password {
 			// Create a JWT token
 			claim := middleware.NewClaims(user.UserID, user.Password, time.Now().Add(time.Hour*200))
-			token := claim.Signing()
+			token, _ := claim.Signing()
 
 			w.Header().Set("Authorization", token)
 			json.NewEncoder(w).Encode(map[string]string{

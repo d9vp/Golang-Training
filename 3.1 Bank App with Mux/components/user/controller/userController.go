@@ -449,6 +449,7 @@ func GetAccountPassbook(w http.ResponseWriter, r *http.Request) {
 			passbook := accService.GetAccountPassbook(acc)
 			w.WriteHeader(http.StatusOK)
 			json.NewEncoder(w).Encode(passbook)
+			return
 		}
 	}
 	http.Error(w, "no such account for user", http.StatusBadRequest)

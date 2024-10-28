@@ -2,7 +2,7 @@ package middleware
 
 import (
 	"context"
-	"encoding/json"
+	"errors"
 	"net/http"
 	"strconv"
 	"time"
@@ -12,7 +12,7 @@ import (
 	"github.com/gorilla/mux"
 )
 
-var secretKey = []byte("helloWorld")
+var secretKey = []byte("it'sDevthedev")
 
 type Claims struct {
 	UserID   int    `json:"userId"`
@@ -20,9 +20,7 @@ type Claims struct {
 	jwt.StandardClaims
 }
 
-func NewClaims(userID int,
-	password string,
-	expirationDate time.Time) *Claims {
+func NewClaims(userID int, password string, expirationDate time.Time) *Claims {
 	return &Claims{
 		UserID:   userID,
 		Password: password,
@@ -32,72 +30,78 @@ func NewClaims(userID int,
 	}
 }
 
-func (c *Claims) Signing() string {
+func (c *Claims) Signing() (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, c)
-	tokenString, _ := token.SignedString(secretKey)
-	return tokenString
+	return token.SignedString(secretKey)
 }
 
-func TokenAuthorisation(next http.Handler) http.Handler {
+func parseToken(r *http.Request) (*Claims, error) {
+	tokenString := r.Header.Get("Authorization")
+	if tokenString == "" {
+		return nil, errors.New("token not found")
+	}
+
+	claims := &Claims{}
+	token, err := jwt.ParseWithClaims(tokenString, claims, func(t *jwt.Token) (interface{}, error) {
+		return secretKey, nil
+	})
+
+	if err != nil || !token.Valid {
+		return nil, errors.New("invalid token")
+	}
+
+	return claims, nil
+}
+
+func TokenAuthorization(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		tokenString := r.Header.Get("Authorization")
-		if tokenString == "" {
-			w.WriteHeader(http.StatusUnauthorized)
-			json.NewEncoder(w).Encode("Token not found")
+		claims, err := parseToken(r)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusUnauthorized)
 			return
 		}
-
-		claim := &Claims{}
-		token, err := jwt.ParseWithClaims(tokenString, claim, func(t *jwt.Token) (interface{}, error) {
-			return secretKey, nil
-		})
-
-		if err != nil || !token.Valid {
-			w.WriteHeader(http.StatusUnauthorized)
-			json.NewEncoder(w).Encode("Invalid token")
-			return
-		}
-
-		ctx := context.WithValue(r.Context(), "claims", claim)
+		ctx := context.WithValue(r.Context(), "claims", claims)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
+}
+
+func checkUserExistence(claims *Claims) (*service.User, error) {
+	for _, user := range service.AllUsers {
+		if user.UserID == claims.UserID && user.Password == claims.Password && user.IsActive {
+			return user, nil
+		}
+	}
+	return nil, errors.New("no such user found")
 }
 
 func VerifyAdmin(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		claims := r.Context().Value("claims").(*Claims)
-		for _, user := range service.AllUsers {
-			if user.UserID == claims.UserID && user.Password == claims.Password && user.IsActive {
-				// Check if the user is an admin
-				if claims == nil || !user.IsAdmin {
-					http.Error(w, "Unauthorized: admin access required", http.StatusUnauthorized)
-					return
-				}
-				next.ServeHTTP(w, r)
-				return
-			}
+		user, err := checkUserExistence(claims)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusUnauthorized)
+			return
 		}
-		http.Error(w, "no such user found", http.StatusUnauthorized)
+		if !user.IsAdmin {
+			http.Error(w, "Unauthorized: admin access required", http.StatusUnauthorized)
+			return
+		}
+		next.ServeHTTP(w, r)
 	})
 }
 
 func VerifyCustomer(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		claims := r.Context().Value("claims").(*Claims)
-
-		for _, user := range service.AllUsers {
-			if user.UserID == claims.UserID && user.Password == claims.Password && user.IsActive {
-				// Check if the user is an admin
-				if claims == nil || user.IsAdmin {
-					http.Error(w, "Unauthorized: customer access required", http.StatusUnauthorized)
-					return
-				}
-				next.ServeHTTP(w, r)
-				return
-			}
+		user, err := checkUserExistence(claims)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusUnauthorized)
+			return
 		}
-		http.Error(w, "no such user found", http.StatusUnauthorized)
-
+		if user.IsAdmin {
+			http.Error(w, "Unauthorized: customer access required", http.StatusUnauthorized)
+			return
+		}
 		next.ServeHTTP(w, r)
 	})
 }
@@ -106,15 +110,13 @@ func VerifyCustomerFunctions(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		claims := r.Context().Value("claims").(*Claims)
 		vars := mux.Vars(r)
-		userID := vars["id"]
-
-		id, err := strconv.Atoi(userID)
+		userID, err := strconv.Atoi(vars["id"])
 		if err != nil {
-			http.Error(w, "Bad request: user id type should be integer", http.StatusBadRequest)
+			http.Error(w, "Bad request: user ID must be an integer", http.StatusBadRequest)
 			return
 		}
-		if claims.UserID != id {
-			http.Error(w, "Unauthorized: can only CRUD on own accounts", http.StatusUnauthorized)
+		if claims.UserID != userID {
+			http.Error(w, "Unauthorized: can only CRUD own accounts", http.StatusUnauthorized)
 			return
 		}
 		next.ServeHTTP(w, r)
